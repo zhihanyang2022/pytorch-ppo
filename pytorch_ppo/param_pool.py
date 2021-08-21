@@ -51,6 +51,10 @@ class ParamPool:
         #     see slides for Lecture 6: Actor-Critic Algorithms of CS 285 by UC Berkeley.
         # (2) Also done in OpenAI SpinningUp's PPO implementation.
 
+        # A major advantage of PPO is the ability to train to convergence on existing data (
+        # by maximizing within a trust region around the parameters of the policy used to collect the
+        # data):
+
         for i in range(self.num_iters_for_policy):
             log_prob = self.policy(data.s).log_prob(data.a)
             ratio = torch.exp(log_prob - data.old_log_prob)
