@@ -53,7 +53,7 @@ class ParamPool:
 
         # A major advantage of PPO is the ability to train to convergence on existing data (
         # by maximizing within a trust region around the parameters of the policy used to collect the
-        # data):
+        # data). This is why PPO is more "sample-efficient" than Vanilla Policy Gradient algorithms.
 
         for i in range(self.num_iters_for_policy):
             log_prob = self.policy(data.s).log_prob(data.a)
