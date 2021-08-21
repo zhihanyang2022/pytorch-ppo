@@ -41,10 +41,15 @@ class ParamPool:
 
         init_policy_loss, init_value_fn_loss = None, None
 
-        # Ideally, we would train the value function first so that it is aligned with
+        # Ideally (1), we would train the value function first so that it is aligned with
         # the policy that collected the data. However, as GAE paper (page 8) has pointed
         # out, if value function overfits, then r + V(s') - V(s) would be close to zero,
-        # which makes advantage estimation biased.
+        # which makes advantage estimation biased. Therefore, it is safer to update the value
+        # function after updating the policy (2).
+
+        # (1) Training the value function before the policy is the right thing to do theoretically;
+        #     see slides for Lecture 6: Actor-Critic Algorithms of CS 285 by UC Berkeley.
+        # (2) Also done in OpenAI SpinningUp's PPO implementation.
 
         for i in range(self.num_iters_for_policy):
             log_prob = self.policy(data.s).log_prob(data.a)
