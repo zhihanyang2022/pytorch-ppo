@@ -41,6 +41,11 @@ class ParamPool:
 
         init_policy_loss, init_value_fn_loss = None, None
 
+        # Ideally, we would train the value function first so that it is aligned with
+        # the policy that collected the data. However, as GAE paper (page 8) has pointed
+        # out, if value function overfits, then r + V(s') - V(s) would be close to zero,
+        # which makes advantage estimation biased.
+
         for i in range(self.num_iters_for_policy):
             log_prob = self.policy(data.s).log_prob(data.a)
             ratio = torch.exp(log_prob - data.old_log_prob)
