@@ -15,12 +15,12 @@ class ParamPool:
             self,
             input_dim: int,
             action_dim: int,
-            num_epochs_for_policy: int,
-            num_epochs_for_value_fn: int,
+            num_iters_for_policy: int,
+            num_iters_for_value_fn: int,
             eps: float = 0.2
     ):
-        self.num_epochs_for_policy = num_epochs_for_policy
-        self.num_epochs_for_value_fn = num_epochs_for_value_fn
+        self.num_iters_for_policy = num_iters_for_policy
+        self.num_iters_for_value_fn = num_iters_for_value_fn
         self.eps = eps
         self.policy = MLPBetaPolicy(input_dim=input_dim, action_dim=action_dim).to(get_device())
         self.policy_optimizer = None
@@ -41,8 +41,8 @@ class ParamPool:
 
         init_policy_loss, init_value_fn_loss = None, None
 
-        for i in range(self.num_epochs_for_policy):
-            log_prob = self.policy(data.states).log_prob(data.actions)
+        for i in range(self.num_iters_for_policy):
+            log_prob = self.policy(data.s).log_prob(data.a)
             ratio = torch.exp(log_prob - data.old_log_prob)
             clipped_ratio = torch.clamp(ratio, 1 - self.eps, 1 + self.eps)
             policy_loss = - (torch.min(ratio * data.adv, clipped_ratio * data.adv)).mean()
@@ -51,8 +51,8 @@ class ParamPool:
             policy_loss.backward()
             self.policy_optimizer.step()
 
-        for j in range(self.num_epochs_for_value_fn):
-            value_fn_loss = ((self.value_fn(data.states) - data.returns) ** 2).mean()
+        for i in range(self.num_iters_for_value_fn):
+            value_fn_loss = ((self.value_fn(data.s) - data.ret) ** 2).mean()
             if i == 0: init_value_fn_loss = float(value_fn_loss)
             self.value_fn_optimizer.zero_grad()
             value_fn_loss.backward()
