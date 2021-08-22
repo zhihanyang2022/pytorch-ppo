@@ -11,11 +11,11 @@ class AddOne(nn.Module):
 
 class MLPBetaPolicy(nn.Module):
 
-    def __init__(self, input_dim, action_dim):
+    def __init__(self, state_dim, action_dim):
         super().__init__()
 
         self.shared_net = nn.Sequential(
-            nn.Linear(input_dim, 256),
+            nn.Linear(state_dim, 256),
             nn.ReLU(),
             nn.Linear(256, 256),
             nn.ReLU()

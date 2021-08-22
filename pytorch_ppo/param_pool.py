@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple
 import numpy as np
 import torch
 
@@ -13,7 +13,7 @@ class ParamPool:
 
     def __init__(
             self,
-            input_dim: int,
+            state_dim: int,
             action_dim: int,
             num_iters_for_policy: int,
             num_iters_for_value_fn: int,
@@ -22,19 +22,19 @@ class ParamPool:
         self.num_iters_for_policy = num_iters_for_policy
         self.num_iters_for_value_fn = num_iters_for_value_fn
         self.eps = eps
-        self.policy = MLPBetaPolicy(input_dim=input_dim, action_dim=action_dim).to(get_device())
+        self.policy = MLPBetaPolicy(state_dim=state_dim, action_dim=action_dim).to(get_device())
         self.policy_optimizer = None
         self.value_fn = None
         self.value_fn_optimizer = None
 
-    def act(self, state: np.array) -> np.array:
+    def act(self, state: np.array) -> Tuple[np.array, float, float]:
         """Output action to be performed in the environment, together with value of state and log p(action|state)"""
-        state = torch.from_numpy(state).unsqueeze(0)
-        value = self.value_fn(state)
-        dist = self.policy(state)  # check shae
-        action = dist.sample()  # check sahpe
-        log_prob = dist.log_prob(action)  # check shape TODO
-        return action, log_prob, value
+        state = torch.from_numpy(state).unsqueeze(0)  # (1, state_dim)
+        value = self.value_fn(state)  # (1, 1)
+        dist = self.policy(state)
+        action = dist.sample()  # (1, action_dim)
+        log_prob = dist.log_prob(action)  # (1, )
+        return np.array(action.squeeze()), float(log_prob), float(value)
 
     def update_networks(self, data: Data) -> Dict[str, float]:
         """Perform gradient steps on policy and value_fn based on data collected under the current policy."""
