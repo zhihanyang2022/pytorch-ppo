@@ -21,7 +21,7 @@ class ParamPool:
             num_iters_for_vf: int,
             eps: float = 0.2,
             policy_lr: float = 3e-4,
-            vf_lr: float=1e-3
+            vf_lr: float = 1e-3
     ):
 
         # hyperparameters
@@ -46,6 +46,8 @@ class ParamPool:
 
     def update_networks(self, data: Data) -> Dict[str, float]:
         """Perform gradient steps on policy and vf based on data collected under the current policy."""
+
+        # Implements PPO-Clip
 
         # Ideally (1), we would train the value function first so that it is aligned with
         # the policy that collected the data. However, as GAE paper (page 8) has pointed
