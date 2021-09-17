@@ -4,9 +4,11 @@ import torch
 import torch.optim as optim
 
 from utils import get_device, save_net, load_net
-from policy import MLPBetaPolicy
+from policies import MLPBetaPolicy, MLPGaussianPolicy
 from value_function import MLPValueFunction
-from episodic_buffer import Data
+
+from mpi_utils import mpi_avg_grads
+
 
 
 class ParamPool:
@@ -30,21 +32,21 @@ class ParamPool:
         self.eps = eps
 
         # important objects
-        self.policy = MLPBetaPolicy(state_dim=state_dim, action_dim=action_dim).to(get_device())
+        self.policy = MLPGaussianPolicy(state_dim=state_dim, action_dim=action_dim).to(get_device())
         self.policy_optimizer = optim.Adam(self.policy.parameters(), lr=policy_lr)
         self.vf = MLPValueFunction(state_dim=state_dim).to(get_device())
         self.vf_optimizer = optim.Adam(self.vf.parameters(), lr=vf_lr)
 
     def act(self, state: np.array) -> Tuple[np.array, float, float]:
         """Output action to be performed in the environment, together with value of state and log p(action|state)"""
-        state = torch.from_numpy(state).unsqueeze(0)  # (1, state_dim)
+        state = torch.from_numpy(state).unsqueeze(0).float()  # (1, state_dim)
         value = self.vf(state)  # (1, 1)
         dist = self.policy(state)
         action = dist.sample()  # (1, action_dim)
         log_prob = dist.log_prob(action)  # (1, )
-        return np.array(action.squeeze()), float(log_prob), float(value)
+        return np.clip(np.array(action)[0], -1, 1), float(log_prob), float(value)
 
-    def update_networks(self, data: Data) -> Dict[str, float]:
+    def update_networks(self, data: dict) -> Dict[str, float]:
         """Perform gradient steps on policy and vf based on data collected under the current policy."""
 
         # Implements PPO-Clip
@@ -66,20 +68,22 @@ class ParamPool:
         init_policy_loss, init_vf_loss = None, None
 
         for i in range(self.num_iters_for_policy):
-            log_prob = self.policy(data.s).log_prob(data.a)
-            ratio = torch.exp(log_prob - data.old_log_prob)
-            clipped_ratio = torch.clamp(ratio, 1 - self.eps, 1 + self.eps)
-            policy_loss = - (torch.min(ratio * data.adv, clipped_ratio * data.adv)).mean()
+            log_prob = self.policy(data["obs"]).log_prob(data["act"])
+            ratio = torch.exp(log_prob - data["logp"])
+            clipped_ratio = torch.clamp(ratio, min=1 - self.eps, max=1 + self.eps)
+            policy_loss = - (torch.min(ratio * data["adv"], clipped_ratio * data["adv"])).mean()
             if i == 0: init_policy_loss = float(policy_loss)
             self.policy_optimizer.zero_grad()
             policy_loss.backward()
+            mpi_avg_grads(self.policy)
             self.policy_optimizer.step()
 
         for i in range(self.num_iters_for_vf):
-            vf_loss = ((self.vf(data.s) - data.ret) ** 2).mean()
+            vf_loss = ((self.vf(data["obs"]) - data["ret"]) ** 2).mean()
             if i == 0: init_vf_loss = float(vf_loss)
             self.vf_optimizer.zero_grad()
             vf_loss.backward()
+            mpi_avg_grads(self.vf)
             self.vf_optimizer.step()
 
         assert init_policy_loss is not None and init_vf_loss is not None
