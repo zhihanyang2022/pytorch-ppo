@@ -1,2 +1,3 @@
-# pytorch-ppo
-Minimal PyTorch implementation of Proximal Policy Optimization
+# Proximal Policy Optimization
+
+Minimal but heavily evaluated PyTorch implementation of PPO-Clip
