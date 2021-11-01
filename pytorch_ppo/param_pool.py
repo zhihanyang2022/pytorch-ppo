@@ -2,6 +2,8 @@ from typing import Dict, Tuple
 import numpy as np
 import torch
 import torch.optim as optim
+import torch.nn.functional as F
+from torch.utils.data import TensorDataset, DataLoader
 
 from utils import get_device, save_net, load_net
 from policies import MLPBetaPolicy, MLPGaussianPolicy
@@ -37,14 +39,18 @@ class ParamPool:
         self.vf = MLPValueFunction(state_dim=state_dim).to(get_device())
         self.vf_optimizer = optim.Adam(self.vf.parameters(), lr=vf_lr)
 
-    def act(self, state: np.array) -> Tuple[np.array, float, float]:
-        """Output action to be performed in the environment, together with value of state and log p(action|state)"""
+    def act(self, state: np.array) -> np.array:
+        """Output action to be performed in the environment"""
         state = torch.from_numpy(state).unsqueeze(0).float()  # (1, state_dim)
-        value = self.vf(state)  # (1, 1)
         dist = self.policy(state)
         action = dist.sample()  # (1, action_dim)
-        log_prob = dist.log_prob(action)  # (1, )
-        return np.clip(np.array(action)[0], -1, 1), float(log_prob), float(value)
+        return np.clip(np.array(action)[0], -1, 1)
+
+    def _compute_logp(self, s, a):
+        return ""
+
+    def _compute_policy_entropy(self, s):
+        return
 
     def update_networks(self, data: dict) -> Dict[str, float]:
         """Perform gradient steps on policy and vf based on data collected under the current policy."""
@@ -67,7 +73,63 @@ class ParamPool:
 
         init_policy_loss, init_vf_loss = None, None
 
-        for i in range(self.num_iters_for_policy):
+        self.num_epochs = None
+        self.batch_size = None  # 64
+
+        # compute old log prob
+        # compute values
+        # compute advantages (this is the trickiest amongst all, but we can do it in a for-loop)
+        # unlike other implementations, this is actually easier to understand, hopefully
+
+        ds = TensorDataset(data["obs"], data["act"], data["old_logp"], data["adv"], data["ret"])
+        dl = DataLoader(ds, batch_size=self.batch_size, shuffle=True)
+
+        for _ in range(self.num_epochs):
+
+            for obs, act, old_logp, adv, ret in dl:
+
+                # compute ratio
+
+                logp = self._compute_logp(obs, act)
+                ratio = torch.exp(logp - old_logp)
+
+                # normalize advantages
+
+                adv = (adv - adv.mean()) / (adv.std() + 1e-8)
+
+                # compute policy loss
+
+                policy_loss_1 = adv * ratio
+                policy_loss_2 = adv * torch.clamp(ratio, 1 - self.eps, 1 + self.eps)
+                policy_loss = torch.min(policy_loss_1, policy_loss_2)
+
+                # computer value function loss
+
+                predicted_values = self.vf(obs)
+                value_fn_loss = F.mse_loss(predicted_values, ret)
+
+                # compute entropy loss
+
+                entropy_loss = - torch.mean(entropy)
+
+                # overall loss
+
+                loss = policy_loss + vf_coef * vf_loss + entropy_coef * entropy_loss
+
+                self.policy_optimizer.zero_grad()
+                self.vf_optimizer.zero_grad()
+                loss.backward()
+                # clip grad norm
+                self.policy_optimizer.step()
+                self.vf_optimizer.step()
+
+                # after each batch, check for condition
+                # break if condition is unmet
+
+            # break again if condition s unmet
+
+            # TOOD:
+
             log_prob = self.policy(data["obs"]).log_prob(data["act"])
             ratio = torch.exp(log_prob - data["logp"])
             clipped_ratio = torch.clamp(ratio, min=1 - self.eps, max=1 + self.eps)

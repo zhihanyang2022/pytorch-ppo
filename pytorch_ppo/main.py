@@ -17,6 +17,8 @@ env = RescaleAction(gym.make("Pendulum-v0"), -1, 1)
 num_epochs = 100
 num_steps = 4000 // num_cpus
 
+# should be integer multiple of environment episode length
+
 param_pool = ParamPool(
     state_dim=env.observation_space.shape[0],
     action_dim=env.action_space.shape[0],
