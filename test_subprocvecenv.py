@@ -4,13 +4,13 @@ import gym
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 
 
-example_env = gym.make("halfcheetah-v2")
+example_env = gym.make("HalfCheetah-v2")
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 
 def make_env():
-    return gym.make("halfcheetah-v2")
+    return gym.make("HalfCheetah-v2")
 
 
 env_fns = [make_env for _ in range(16)]
