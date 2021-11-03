@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
 
     env_fns = [make_env for _ in range(16)]
-    env = ShmemVecEnv(env_fns, context='fork')
+    env = ShmemVecEnv(env_fns, context='spawn')
 
     start = time.perf_counter()
 
