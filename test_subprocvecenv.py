@@ -60,8 +60,7 @@ if __name__ == '__main__':
     env.reset()
     for _ in range(16000):
 
-        env.step(env.action_space.sample())
-        obs, reward, done, info = env.step()
+        obs, reward, done, info = env.step(env.action_space.sample())
 
         if done:
             env = make_env()
