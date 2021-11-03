@@ -64,6 +64,7 @@ if __name__ == '__main__':
 
         if done:
             env = make_env()
+            env.reset()
 
     end = time.perf_counter()
 
