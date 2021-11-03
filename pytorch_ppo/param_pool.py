@@ -13,44 +13,64 @@ from mpi_utils import mpi_avg_grads
 
 
 
-class ParamPool:
+class PPO:
 
     """Class containing parameters and ways by which they interact with env / data."""
 
     def __init__(
             self,
+
             state_dim: int,
             action_dim: int,
-            num_iters_for_policy: int,
-            num_iters_for_vf: int,
-            eps: float = 0.2,
-            policy_lr: float = 3e-4,
-            vf_lr: float = 1e-3
+
+            num_epochs: int = 10,  # SB3
+            batch_size: int = 64,  # SB3
+
+            eps: float = 0.1,  # openai spinup
+
+            vf_loss_weight: float = 0.5,  # SB3
+            entropy_loss_weight: float = 0.0,  # SB3
+            max_grad_norm: float = 0.5,  # SB3
+
+            lr: float = 3e-4,  # SB3
+
+            target_kl: float = 1e-3  # openai spinup
     ):
 
         # hyperparameters
-        self.num_iters_for_policy = num_iters_for_policy
-        self.num_iters_for_vf = num_iters_for_vf
+
+        self.num_epochs = num_epochs
+        self.batch_size = batch_size
+
         self.eps = eps
 
+        self.vf_loss_weight = vf_loss_weight
+        self.entropy_loss_weight = entropy_loss_weight
+        self.max_grad_norm = max_grad_norm
+
+        self.target_kl = target_kl
+
         # important objects
+
         self.policy = MLPGaussianPolicy(state_dim=state_dim, action_dim=action_dim).to(get_device())
-        self.policy_optimizer = optim.Adam(self.policy.parameters(), lr=policy_lr)
+        self.policy_optimizer = optim.Adam(self.policy.parameters(), lr=lr)
         self.vf = MLPValueFunction(state_dim=state_dim).to(get_device())
-        self.vf_optimizer = optim.Adam(self.vf.parameters(), lr=vf_lr)
+        self.vf_optimizer = optim.Adam(self.vf.parameters(), lr=lr)
 
     def act(self, state: np.array) -> np.array:
-        """Output action to be performed in the environment"""
+        """Output action to be performed in the environment, along with other useful stats"""
+
         state = torch.from_numpy(state).unsqueeze(0).float()  # (1, state_dim)
+
         dist = self.policy(state)
         action = dist.sample()  # (1, action_dim)
-        return np.clip(np.array(action)[0], -1, 1)
+        logp = dist.log_prob(action)  # (1, )
+        value = self.vf(state)  # (1, 1)
 
-    def _compute_logp(self, s, a):
-        return ""
-
-    def _compute_policy_entropy(self, s):
-        return
+        # action: for now, we test on continuous control domains
+        # logp: required for update_networks
+        # value: required for bootstraping in computing returns
+        return np.clip(np.array(action)[0], -1, 1), float(logp), float(value)
 
     def update_networks(self, data: dict) -> Dict[str, float]:
         """Perform gradient steps on policy and vf based on data collected under the current policy."""
@@ -71,86 +91,107 @@ class ParamPool:
         # by maximizing within a trust region around the parameters of the policy used to collect the
         # data). This is why PPO is more "sample-efficient" than Vanilla Policy Gradient algorithms.
 
-        init_policy_loss, init_vf_loss = None, None
+        # for logging
 
-        self.num_epochs = None
-        self.batch_size = None  # 64
+        policy_losses = []
+        vf_losses = []
+        entropy_losses = []
+        losses = []
+        approx_kls = []
 
-        # compute old log prob
-        # compute values
-        # compute advantages (this is the trickiest amongst all, but we can do it in a for-loop)
-        # unlike other implementations, this is actually easier to understand, hopefully
+        # datasets
 
-        ds = TensorDataset(data["obs"], data["act"], data["old_logp"], data["adv"], data["ret"])
+        ds = TensorDataset(data["states"], data["actions"], data["old_logps"], data["advs"], data["rets"])
         dl = DataLoader(ds, batch_size=self.batch_size, shuffle=True)
 
         for _ in range(self.num_epochs):
 
-            for obs, act, old_logp, adv, ret in dl:
+            for states, actions, old_logps, advs, rets in dl:
 
                 # compute ratio
 
-                logp = self._compute_logp(obs, act)
-                ratio = torch.exp(logp - old_logp)
+                dists = self.policy(states)
+                logps = dists.log_prob(actions)
+                log_ratios = logps - old_logps
+                ratios = torch.exp(log_ratios)
 
                 # normalize advantages
 
-                adv = (adv - adv.mean()) / (adv.std() + 1e-8)
+                advs = (advs - advs.mean()) / (advs.std() + 1e-8)
 
                 # compute policy loss
 
-                policy_loss_1 = adv * ratio
-                policy_loss_2 = adv * torch.clamp(ratio, 1 - self.eps, 1 + self.eps)
-                policy_loss = torch.min(policy_loss_1, policy_loss_2)
+                policy_objective_1 = advs * ratios
+                policy_objective_2 = advs * torch.clamp(ratios, 1 - self.eps, 1 + self.eps)
+                policy_objective = torch.min(policy_objective_1, policy_objective_2).mean()
+                policy_loss = - policy_objective
+
+                policy_losses.append(float(policy_loss))
 
                 # computer value function loss
 
-                predicted_values = self.vf(obs)
-                value_fn_loss = F.mse_loss(predicted_values, ret)
+                predicted_values = self.vf(states)
+                vf_loss = F.mse_loss(predicted_values, rets)
+
+                vf_losses.append(float(vf_loss))
 
                 # compute entropy loss
 
-                entropy_loss = - torch.mean(entropy)
+                entropies = dists.entropy()
+                entropy_objective = torch.mean(entropies)
+                entropy_loss = - entropy_objective
+
+                entropy_losses.append(float(entropy_loss))
 
                 # overall loss
 
-                loss = policy_loss + vf_coef * vf_loss + entropy_coef * entropy_loss
+                loss = policy_loss + self.vf_loss_weight * vf_loss + self.entropy_loss_weight * entropy_loss
+
+                losses.append(float(loss))
 
                 self.policy_optimizer.zero_grad()
                 self.vf_optimizer.zero_grad()
                 loss.backward()
-                # clip grad norm
+
+                torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
+
                 self.policy_optimizer.step()
                 self.vf_optimizer.step()
 
                 # after each batch, check for condition
                 # break if condition is unmet
 
+                with torch.no_grad():
+                    approx_kl = torch.mean((torch.exp(log_ratios) - 1) - log_ratios).cpu().numpy()
+
+                approx_kls.append(float(approx_kl))
+
+                if self.target_kl is not None and approx_kl > 1.5 * self.target_kl:
+                    continue_training = False
+                    break
+
             # break again if condition s unmet
 
-            # TOOD:
+            if not continue_training:
+                break
 
-            log_prob = self.policy(data["obs"]).log_prob(data["act"])
-            ratio = torch.exp(log_prob - data["logp"])
-            clipped_ratio = torch.clamp(ratio, min=1 - self.eps, max=1 + self.eps)
-            policy_loss = - (torch.min(ratio * data["adv"], clipped_ratio * data["adv"])).mean()
-            if i == 0: init_policy_loss = float(policy_loss)
-            self.policy_optimizer.zero_grad()
-            policy_loss.backward()
-            mpi_avg_grads(self.policy)
-            self.policy_optimizer.step()
+        # compute stat values, and explained variance
 
-        for i in range(self.num_iters_for_vf):
-            vf_loss = ((self.vf(data["obs"]) - data["ret"]) ** 2).mean()
-            if i == 0: init_vf_loss = float(vf_loss)
-            self.vf_optimizer.zero_grad()
-            vf_loss.backward()
-            mpi_avg_grads(self.vf)
-            self.vf_optimizer.step()
+        # for i in range(self.num_iters_for_vf):
+        #     vf_loss = ((self.vf(data["obs"]) - data["ret"]) ** 2).mean()
+        #     if i == 0: init_vf_loss = float(vf_loss)
+        #     self.vf_optimizer.zero_grad()
+        #     vf_loss.backward()
+        #     mpi_avg_grads(self.vf)
+        #     self.vf_optimizer.step()
 
-        assert init_policy_loss is not None and init_vf_loss is not None
-
-        return {"policy loss": init_policy_loss, "vf loss": init_vf_loss}
+        return {
+            "policy_loss": np.mean(policy_losses),
+            "vf_loss": np.mean(vf_losses),
+            "entropy_loss": np.mean(entropy_losses),
+            "loss": np.mean(losses),
+            "approx_kls": np.mean(approx_kls)
+        }
 
     def save_policy(self, save_dir) -> None:
         save_net(self.policy, save_dir, "policy.pth")

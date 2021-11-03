@@ -39,22 +39,30 @@ class MLPBetaPolicy(nn.Module):
 
 class MLPGaussianPolicy(nn.Module):
 
-    def __init__(self, state_dim, action_dim):
+    """
+    MLPGaussianPolicy follows from https://github.com/DLR-RM/stable-baselines3/blob/6daf82bf7439675fa8595812ddaa1bc00473da26/stable_baselines3/common/policies.py#L377.
+    - activation function: Tanh
+    - network architecture: [64, 64]
+    - log_std_init: 0 => std_init = e^(log_std_init) = e^(0) = 1
+    """
+
+    def __init__(self, state_dim, action_dim, log_std_init):
+
         super().__init__()
 
-        self.means_net = nn.Sequential(
+        # mean and log_std vector
+
+        self.mean_net = nn.Sequential(
             nn.Linear(state_dim, 64),
             nn.Tanh(),
             nn.Linear(64, 64),
             nn.Tanh(),
             nn.Linear(64, action_dim),
-            nn.Tanh()
         )
 
-        self.fixed_var = torch.tensor([0.1])
+        self.log_std = nn.Parameter(torch.ones(action_dim) * log_std_init, requires_grad=True)
 
     def forward(self, states: torch.tensor) -> Distribution:
-        means = self.means_net(states)
-        vars = self.fixed_var.expand_as(self.fixed_var)
-        cov_matrix = torch.diag_embed(vars)
-        return MultivariateNormal(means, cov_matrix)
+        means = self.mean_net(states)
+        shared_cov_matrix = torch.diag_embed(self.log_std)
+        return MultivariateNormal(means, shared_cov_matrix)
