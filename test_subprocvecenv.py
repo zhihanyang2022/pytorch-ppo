@@ -4,65 +4,67 @@ import gym
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 
 
-example_env = gym.make("HalfCheetah-v2")
+if __name__ == '__main__':
 
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    example_env = gym.make("HalfCheetah-v2")
 
-
-def make_env():
-    return gym.make("HalfCheetah-v2")
+    # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 
-env_fns = [make_env for _ in range(16)]
-env = SubprocVecEnv(env_fns)
+    def make_env():
+        return gym.make("HalfCheetah-v2")
 
-start = time.perf_counter()
 
-for _ in range(1000):
+    env_fns = [make_env for _ in range(16)]
+    env = SubprocVecEnv(env_fns)
 
-    env.step_async(np.random.normal(size=(16, example_env.action_space.shape[0])))
-    observation, reward, done, information = env.step_wait()
+    start = time.perf_counter()
 
-end = time.perf_counter()
+    for _ in range(1000):
 
-duration = end - start
+        env.step_async(np.random.normal(size=(16, example_env.action_space.shape[0])))
+        observation, reward, done, information = env.step_wait()
 
-print("SubprocVecEnv Duration: ", duration)
+    end = time.perf_counter()
 
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    duration = end - start
 
-env_fns = [make_env for _ in range(16)]
-env = DummyVecEnv(env_fns)
+    print("SubprocVecEnv Duration: ", duration)
 
-start = time.perf_counter()
+    # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-for _ in range(1000):
+    env_fns = [make_env for _ in range(16)]
+    env = DummyVecEnv(env_fns)
 
-    env.step_async(np.random.normal(size=(16, example_env.action_space.shape[0])))
-    observation, reward, done, information = env.step_wait()
+    start = time.perf_counter()
 
-end = time.perf_counter()
+    for _ in range(1000):
 
-duration = end - start
+        env.step_async(np.random.normal(size=(16, example_env.action_space.shape[0])))
+        observation, reward, done, information = env.step_wait()
 
-print("DummyVecEnv Duration: ", duration)
+    end = time.perf_counter()
 
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    duration = end - start
 
-env = make_env()
+    print("DummyVecEnv Duration: ", duration)
 
-start = time.perf_counter()
+    # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-for _ in range(16000):
+    env = make_env()
 
-    env.step(env.action_space.sample())
-    obs, reward, done, info = env.step()
+    start = time.perf_counter()
 
-    if done:
-        env = make_env()
+    for _ in range(16000):
 
-end = time.perf_counter()
+        env.step(env.action_space.sample())
+        obs, reward, done, info = env.step()
 
-duration = end - start
+        if done:
+            env = make_env()
 
-print("Standard Duration: ", duration)
+    end = time.perf_counter()
+
+    duration = end - start
+
+    print("Standard Duration: ", duration)
