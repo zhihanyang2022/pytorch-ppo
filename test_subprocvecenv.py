@@ -20,6 +20,7 @@ if __name__ == '__main__':
 
     start = time.perf_counter()
 
+    env.reset()
     for _ in range(1000):
 
         env.step_async(np.random.normal(size=(16, example_env.action_space.shape[0])))
@@ -38,6 +39,7 @@ if __name__ == '__main__':
 
     start = time.perf_counter()
 
+    env.reset()
     for _ in range(1000):
 
         env.step_async(np.random.normal(size=(16, example_env.action_space.shape[0])))
@@ -55,6 +57,7 @@ if __name__ == '__main__':
 
     start = time.perf_counter()
 
+    env.reset()
     for _ in range(16000):
 
         env.step(env.action_space.sample())
