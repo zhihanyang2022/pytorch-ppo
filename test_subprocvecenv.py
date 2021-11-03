@@ -26,6 +26,8 @@ if __name__ == '__main__':
         env.step_async(np.random.normal(size=(16, example_env.action_space.shape[0])))
         observation, reward, done, information = env.step_wait()
 
+    env.close()
+
     end = time.perf_counter()
 
     duration = end - start
@@ -50,6 +52,8 @@ if __name__ == '__main__':
         env.step_async(np.random.normal(size=(16, example_env.action_space.shape[0])))
         observation, reward, done, information = env.step_wait()
 
+    env.close()
+
     end = time.perf_counter()
 
     duration = end - start
@@ -68,6 +72,8 @@ if __name__ == '__main__':
 
         env.step_async(np.random.normal(size=(16, example_env.action_space.shape[0])))
         observation, reward, done, information = env.step_wait()
+
+    env.close()
 
     end = time.perf_counter()
 
