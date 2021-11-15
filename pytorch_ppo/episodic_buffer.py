@@ -63,15 +63,8 @@ class EpisodicBuffer:
         self.path_start_idx = self.ptr
 
     def get(self):
-        """
-        Call this at the end of an epoch to get all of the data from
-        the buffer, with advantages appropriately normalized (shifted to have
-        mean zero and std one). Also, resets some pointers in the buffer.
-        """
         assert self.ptr == self.max_size  # buffer has to be full before you can get
         self.ptr, self.path_start_idx = 0, 0
-        # adv_mean, adv_std = np.mean(self.adv_buf), np.std(self.adv_buf)
-        # self.adv_buf = (self.adv_buf - adv_mean) / adv_std
         data = dict(states=self.obs_buf, actions=self.act_buf, rets=self.ret_buf,
-                    advs=self.adv_buf, old_logps=self.logp_buf)
-        return {k: torch.as_tensor(v, dtype=torch.float32) for k, v in data.items()}
+                    advs=self.adv_buf, old_logps=self.logp_buf, values=self.val_buf)
+        return data

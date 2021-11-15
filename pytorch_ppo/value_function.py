@@ -15,14 +15,14 @@ class MLPValueFunction(nn.Module):
             nn.Linear(64, 1)
         )
 
-        self.apply(self.init_weights)
+        # self.apply(self.init_weights)
 
-    @staticmethod
-    def init_weights(m):
-        if isinstance(m, nn.Linear):
-            nn.init.orthogonal_(m.weight, gain=1)
-            if m.bias is not None:
-                m.bias.data.fill_(0.0)
+    # @staticmethod
+    # def init_weights(m):
+    #     if isinstance(m, nn.Linear):
+    #         nn.init.orthogonal_(m.weight, gain=1)
+    #         if m.bias is not None:
+    #             m.bias.data.fill_(0.0)
 
     def forward(self, states: torch.tensor) -> torch.tensor:
         return self.layers(states)

@@ -44,4 +44,17 @@ for e in range(25):
 
     param_pool.update_networks(buffer.get())
 
-    print(e, np.mean(train_rets), len(train_rets))
+    test_rets = []
+    for _ in range(10):
+        test_ret = 0
+        state = env.reset()
+        while True:
+            action = param_pool.act_determ(state)
+            next_state, reward, done, info = env.step(np.clip(action, -1, 1))
+            test_ret += reward
+            if done:
+                break
+            state = next_state
+        test_rets.append(test_ret)
+
+    print(e, np.mean(train_rets), np.mean(test_rets))

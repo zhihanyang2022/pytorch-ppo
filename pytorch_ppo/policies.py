@@ -60,18 +60,22 @@ class MLPGaussianPolicy(nn.Module):
             nn.Linear(64, action_dim),
         )
 
-        self.apply(self.init_weights)
+        # self.apply(self.init_weights)
 
         self.log_std = nn.Parameter(torch.ones(action_dim) * log_std_init, requires_grad=True)
 
-    @staticmethod
-    def init_weights(m):
-        if isinstance(m, nn.Linear):
-            nn.init.orthogonal_(m.weight, gain=0.01)
-            if m.bias is not None:
-                m.bias.data.fill_(0.0)
+    # @staticmethod
+    # def init_weights(m):
+    #     if isinstance(m, nn.Linear):
+    #         nn.init.orthogonal_(m.weight, gain=0.01)
+    #         if m.bias is not None:
+    #             m.bias.data.fill_(0.0)
 
     def forward(self, states: torch.tensor) -> Distribution:
         means = self.mean_net(states)
         shared_cov_matrix = torch.diag_embed(torch.exp(self.log_std))
         return MultivariateNormal(means, shared_cov_matrix)
+
+    def forward_determ(self, states: torch.tensor) -> torch.tensor:
+        means = self.mean_net(states)
+        return means

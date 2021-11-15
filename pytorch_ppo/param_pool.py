@@ -69,17 +69,24 @@ class PPOClip:
 
     def act(self, state: np.array) -> np.array:
 
-        state = torch.from_numpy(state).unsqueeze(0).float()  # (1, state_dim)
+        with torch.no_grad():
 
-        dist = self.policy(state)
-        action = dist.sample()  # (1, action_dim)
-        logp = dist.log_prob(action)  # (1, )
-        value = self.vf(state)  # (1, 1)
+            state = torch.from_numpy(state).unsqueeze(0).float()  # (1, state_dim)
 
-        # action: for now, we test on continuous control domains
-        # logp: required for update_networks
-        # value: required for bootstraping in computing returns
-        return np.array(action)[0], float(logp), float(value)
+            dist = self.policy(state)
+            action = dist.sample()  # (1, action_dim)
+            logp = dist.log_prob(action)  # (1, )
+            value = self.vf(state)  # (1, 1)
+
+            # action: for now, we test on continuous control domains
+            # logp: required for update_networks
+            # value: required for bootstraping in computing returns
+            return np.array(action)[0], float(logp), float(value)
+
+    def act_determ(self, state: np.array) -> np.array:
+        with torch.no_grad():
+            state = torch.from_numpy(state).unsqueeze(0).float()  # (1, state_dim)
+            return np.array(self.policy.forward_determ(state))[0]
 
     def update_networks(self, data: dict) -> Dict[str, float]:
 
@@ -97,7 +104,7 @@ class PPOClip:
 
         # datasets
 
-        ds = TensorDataset(data["states"], data["actions"], data["old_logps"], data["advs"], data["rets"])
+        ds = TensorDataset(*list(map(torch.as_tensor, [data["states"], data["actions"], data["old_logps"], data["advs"], data["rets"]])))
         dl = DataLoader(ds, batch_size=self.batch_size, shuffle=True)
 
         continue_training = True
@@ -199,7 +206,7 @@ class PPOClip:
 
         # compute stat values, and explained variance
 
-        # explained_var = explained_variance(y_pred=data["values"], y_true=data["rets"])
+        explained_var = explained_variance(y_pred=data["values"], y_true=data["rets"])
 
         print({
             "policy_loss": np.mean(policy_losses),
@@ -208,7 +215,7 @@ class PPOClip:
             "loss": np.mean(losses),
             "approx_kl": np.mean(approx_kls),
             "clip_fraction": np.mean(clip_fractions),
-            # "explained_var": explained_var
+            "explained_var": explained_var
         })
 
     def save(self, save_dir) -> None:
