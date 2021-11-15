@@ -1,107 +1,77 @@
 import numpy as np
 import torch
-from torch.utils.data import TensorDataset, DataLoader
+from utils import combined_shape, discount_cumsum
+
 
 class EpisodicBuffer:
+    """
+    A buffer for storing trajectories experienced by a PPO agent interacting
+    with the environment, and using Generalized Advantage Estimation (GAE-Lambda)
+    for calculating the advantages of state-action pairs.
+    """
 
-    def __init__(
-            self,
-            state_dim: int,
-            action_dim: int,
-            buffer_size: int,
-            num_envs: int,
-            gamma: float = 0.99,
-            lam: float = 0.95
-    ):
-        # hyperparameters
-        self.state_dim = state_dim
-        self.action_dim = action_dim
-        self.buffer_size = buffer_size
-        self.num_envs = num_envs
-        self.gamma = gamma
-        self.lam = lam
-        self.buffer_size = buffer_size
+    def __init__(self, obs_dim, act_dim, size, gamma=0.99, lam=0.95):
+        self.obs_buf = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
+        self.act_buf = np.zeros(combined_shape(size, act_dim), dtype=np.float32)
+        self.adv_buf = np.zeros(size, dtype=np.float32)
+        self.rew_buf = np.zeros(size, dtype=np.float32)
+        self.ret_buf = np.zeros(size, dtype=np.float32)
+        self.val_buf = np.zeros(size, dtype=np.float32)
+        self.logp_buf = np.zeros(size, dtype=np.float32)
         self.gamma, self.lam = gamma, lam
-        self.ptr = 0
+        self.ptr, self.path_start_idx, self.max_size = 0, 0, size
 
-        # filled on the go
-        self.states = np.zeros((self.buffer_size, self.num_envs, self.state_dim), dtype=np.float32)
-        self.actions = np.zeros((self.buffer_size, self.num_envs, self.action_dim), dtype=np.float32)
-        self.rewards = np.zeros((self.buffer_size, self.num_envs), dtype=np.float32)
-        self.dones = np.zeros((self.buffer_size, self.num_envs), dtype=np.float32)  # also denote the start of a new episode
-        self.values = np.zeros((self.buffer_size, self.num_envs), dtype=np.float32)  # for computing returns and explained variance
-        self.log_probs = np.zeros((self.buffer_size, self.num_envs), dtype=np.float32)  # for update step
-
-        # filled in the end of each step
-        self.returns = np.zeros((buffer_size, num_envs), dtype=np.float32)
-        self.advantages = np.zeros((buffer_size, num_envs), dtype=np.float32)
-
-    def push(
-            self,
-            states_batch: np.array,
-            actions_batch: np.array,
-            rewards_batch: np.array,
-            dones_batch: np.array,
-            values_batch: np.array,
-            log_probs_batch: np.array
-    ):
-
-        assert self.ptr < self.buffer_size, "Buffer is filled up!"
-
-        self.states[self.ptr] = states_batch
-        self.actions[self.ptr] = actions_batch
-        self.rewards[self.ptr] = rewards_batch
-        self.dones[self.ptr] = dones_batch
-        self.values[self.ptr] = values_batch
-        self.log_probs[self.ptr] = log_probs_batch
-
+    def store(self, obs, act, rew, val, logp):
+        """
+        Append one timestep of agent-environment interaction to the buffer.
+        """
+        assert self.ptr < self.max_size  # buffer has to have room so you can store
+        self.obs_buf[self.ptr] = obs
+        self.act_buf[self.ptr] = act
+        self.rew_buf[self.ptr] = rew
+        self.val_buf[self.ptr] = val
+        self.logp_buf[self.ptr] = logp
         self.ptr += 1
 
-    def make_data_dict_and_reset(self, values_of_last_next_states, dones):
+    def finish_path(self, last_val=0):
+        """
+        Call this at the end of a trajectory, or when one gets cut off
+        by an epoch ending. This looks back in the buffer to where the
+        trajectory started, and uses rewards and value estimates from
+        the whole trajectory to compute advantage estimates with GAE-Lambda,
+        as well as compute the rewards-to-go for each state, to use as
+        the targets for the value function.
+        The "last_val" argument should be 0 if the trajectory ended
+        because the agent reached a terminal state (died), and otherwise
+        should be V(s_T), the value function estimated for the last state.
+        This allows us to bootstrap the reward-to-go calculation to account
+        for timesteps beyond the arbitrary episode horizon (or epoch cutoff).
+        """
 
-        # compute advantages and returns
-        # Compute target value using TD(lambda) estimator, and advantage with GAE(lambda)
-        # both are truncated
+        path_slice = slice(self.path_start_idx, self.ptr)
+        rews = np.append(self.rew_buf[path_slice], last_val)  # r_1, r_2, ..., r_T, V(s_T)
+        vals = np.append(self.val_buf[path_slice], last_val)  # V(s_0), V(s_1), ..., V(s_{T-1}), V(s_T)
 
-        advantage = 0
-        for step in reversed(range(self.buffer_size)):
+        # the next two lines implement GAE-Lambda advantage calculation
+        deltas = rews[:-1] + self.gamma * vals[1:] - vals[:-1]
+        self.adv_buf[path_slice] = discount_cumsum(deltas, self.gamma * self.lam)
 
-            if step == self.buffer_size - 1:
-                next_non_terminal = 1.0 - dones
-                next_values = values_of_last_next_states
-            else:
-                next_non_terminal = 1.0 - self.dones[step]
-                next_values = self.values[step + 1]
+        # the next line computes rewards-to-go, to be targets for the value function
+        # self.ret_buf[path_slice] = discount_cumsum(rews, self.gamma)[:-1]
+        self.ret_buf[path_slice] = self.adv_buf[path_slice] + self.val_buf[path_slice]
 
-            delta = self.rewards[step] + self.gamma * next_values * next_non_terminal - self.values[step]
+        self.path_start_idx = self.ptr
 
-            advantage = delta + self.gamma * self.lam * next_non_terminal * advantage
-
-            self.advantages[step] = advantage
-
-        self.returns = self.advantages + self.values
-
-        # make dataset
-
-        data = dict(
-            states=self.states,
-            actions=self.actions,
-            values=self.values,
-            old_log_probs=self.log_probs,
-            advantages=self.advantages,
-            returns=self.returns
-        )
-
-        # reset buffer
-
-        self.states = np.zeros((self.buffer_size, self.num_envs, self.state_dim), dtype=np.float32)
-        self.actions = np.zeros((self.buffer_size, self.num_envs, self.action_dim), dtype=np.float32)
-        self.rewards = np.zeros((self.buffer_size, self.num_envs), dtype=np.float32)
-        self.dones = np.zeros((self.buffer_size, self.num_envs), dtype=np.float32)
-        self.values = np.zeros((self.buffer_size, self.num_envs), dtype=np.float32)
-        self.log_probs = np.zeros((self.buffer_size, self.num_envs), dtype=np.float32)
-
+    def get(self):
+        """
+        Call this at the end of an epoch to get all of the data from
+        the buffer, with advantages appropriately normalized (shifted to have
+        mean zero and std one). Also, resets some pointers in the buffer.
+        """
         assert self.ptr == self.max_size  # buffer has to be full before you can get
-        self.ptr = 0
-
+        self.ptr, self.path_start_idx = 0, 0
+        # adv_mean, adv_std = np.mean(self.adv_buf), np.std(self.adv_buf)
+        # self.adv_buf = (self.adv_buf - adv_mean) / adv_std
+        data = dict(states=self.obs_buf, actions=self.act_buf, rets=self.ret_buf,
+                    advs=self.adv_buf, old_logps=self.logp_buf)
         return {k: torch.as_tensor(v, dtype=torch.float32) for k, v in data.items()}

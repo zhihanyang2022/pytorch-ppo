@@ -16,10 +16,7 @@ from value_function import MLPValueFunction
 class PPOClip:
 
     """
-    Class containing parameters and ways by which they interact with env / data.
-
-    Very similar to SB3's PPO; some implementation details may be exactly the same.
-    Unlike SB3's PPO, we do not offer the option to do value function clipping (default is false in SB3 anyway).
+    Class containing neural networks and methods by which they interact with env / data.
 
     All default hyperparameter values are copied from SB3, and can be overrode by configs.
     """
@@ -71,7 +68,6 @@ class PPOClip:
         self.vf_optimizer = optim.Adam(self.vf.parameters(), lr=lr)
 
     def act(self, state: np.array) -> np.array:
-        """Output action to be performed in the environment, along with other useful stats"""
 
         state = torch.from_numpy(state).unsqueeze(0).float()  # (1, state_dim)
 
@@ -83,26 +79,12 @@ class PPOClip:
         # action: for now, we test on continuous control domains
         # logp: required for update_networks
         # value: required for bootstraping in computing returns
-        return np.clip(np.array(action)[0], -1, 1), float(logp), float(value)
+        return np.array(action)[0], float(logp), float(value)
 
     def update_networks(self, data: dict) -> Dict[str, float]:
-        """Perform gradient steps on policy and vf based on data collected under the current policy."""
 
-        # Implements PPO-Clip
-
-        # Ideally (1), we would train the value function first so that it is aligned with
-        # the policy that collected the data. However, as GAE paper (page 8) has pointed
-        # out, if value function overfits, then r + V(s') - V(s) would be close to zero,
-        # which makes advantage estimation biased. Therefore, it is safer to update the value
-        # function after updating the policy (2).
-
-        # (1) Training the value function before the policy is the right thing to do theoretically;
-        #     see slides for Lecture 6: Actor-Critic Algorithms of CS 285 by UC Berkeley.
-        # (2) Also done in OpenAI SpinningUp's PPO implementation.
-
-        # A major advantage of PPO is the ability to train to convergence on existing data (
-        # by maximizing within a trust region around the parameters of the policy used to collect the
-        # data). This is why PPO is more "sample-efficient" than Vanilla Policy Gradient algorithms.
+        # This method is very similar to SB3's PPO's learn method; some implementation details may be exactly the same.
+        # Unlike SB3's PPO, we do not offer the option to do value function clipping (default is false in SB3 anyway).
 
         # for logging
 
@@ -111,11 +93,18 @@ class PPOClip:
         entropy_losses = []
         losses = []
         approx_kls = []
+        clip_fractions = []
 
         # datasets
 
         ds = TensorDataset(data["states"], data["actions"], data["old_logps"], data["advs"], data["rets"])
         dl = DataLoader(ds, batch_size=self.batch_size, shuffle=True)
+
+        continue_training = True
+
+        # A major advantage of PPO is the ability to train to convergence on existing data by
+        # maximizing within a trust region around the parameters of the policy used to collect the
+        # This is why PPO is more "sample-efficient" than Vanilla Policy Gradient algorithms.
 
         for _ in range(self.num_epochs):
 
@@ -127,6 +116,9 @@ class PPOClip:
                 logps = dists.log_prob(actions)
                 log_ratios = logps - old_logps
                 ratios = torch.exp(log_ratios)
+
+                clip_fraction = (torch.abs(ratios - 1) > self.eps).float().mean()
+                clip_fractions.append(float(clip_fraction))
 
                 # normalize advantages
 
@@ -143,8 +135,20 @@ class PPOClip:
 
                 # computer value function loss
 
+                # A word about value function training
+
+                # Ideally (1), we would train the value function first so that it is aligned with
+                # the policy that collected the data. However, as GAE paper (page 8) has pointed
+                # out, if value function overfits, then r + V(s') - V(s) would be close to zero,
+                # which makes advantage estimation biased. Therefore, it is safer to update the value
+                # function after updating the policy (2).
+
+                # (1) Training the value function before the policy is the right thing to do theoretically;
+                #     see slides for Lecture 6: Actor-Critic Algorithms of CS 285 by UC Berkeley.
+                # (2) Also done in OpenAI SpinningUp's PPO implementation.
+
                 predicted_values = self.vf(states)
-                vf_loss = F.mse_loss(predicted_values, rets)
+                vf_loss = F.mse_loss(input=predicted_values.flatten(), target=rets)
 
                 vf_losses.append(float(vf_loss))
 
@@ -162,44 +166,50 @@ class PPOClip:
 
                 losses.append(float(loss))
 
-                self.policy_optimizer.zero_grad()
-                self.vf_optimizer.zero_grad()
-                loss.backward()
-
-                torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
-
-                self.policy_optimizer.step()
-                self.vf_optimizer.step()
-
                 # after each batch, check for condition
                 # break if condition is unmet
 
                 with torch.no_grad():
-                    approx_kl = torch.mean((torch.exp(log_ratios) - 1) - log_ratios).cpu().numpy()
+                    approx_kl = torch.mean((ratios - 1) - log_ratios).cpu().numpy()
 
                 approx_kls.append(float(approx_kl))
 
                 if self.target_kl is not None and approx_kl > 1.5 * self.target_kl:
                     continue_training = False
+                    print("Training cut off")
                     break
 
-            # break again if condition s unmet
+                # update parameters
+
+                self.policy_optimizer.zero_grad()
+                self.vf_optimizer.zero_grad()
+
+                loss.backward()
+
+                torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(self.vf.parameters(), self.max_grad_norm)
+
+                self.policy_optimizer.step()
+                self.vf_optimizer.step()
+
+            # break again if condition is unmet
 
             if not continue_training:
                 break
 
         # compute stat values, and explained variance
 
-        explained_var = explained_variance(y_pred=data["values"], y_true=data["rets"])
+        # explained_var = explained_variance(y_pred=data["values"], y_true=data["rets"])
 
-        return {
+        print({
             "policy_loss": np.mean(policy_losses),
             "vf_loss": np.mean(vf_losses),
             "entropy_loss": np.mean(entropy_losses),
             "loss": np.mean(losses),
-            "approx_kls": np.mean(approx_kls),
-            "explained_var": explained_var
-        }
+            "approx_kl": np.mean(approx_kls),
+            "clip_fraction": np.mean(clip_fractions),
+            # "explained_var": explained_var
+        })
 
     def save(self, save_dir) -> None:
         save_net(self.vf, save_dir, "vf.pth")

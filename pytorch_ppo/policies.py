@@ -46,7 +46,7 @@ class MLPGaussianPolicy(nn.Module):
     - log_std_init: 0 => std_init = e^(log_std_init) = e^(0) = 1
     """
 
-    def __init__(self, state_dim, action_dim, log_std_init):
+    def __init__(self, state_dim, action_dim, log_std_init=1):
 
         super().__init__()
 
@@ -60,9 +60,18 @@ class MLPGaussianPolicy(nn.Module):
             nn.Linear(64, action_dim),
         )
 
+        self.apply(self.init_weights)
+
         self.log_std = nn.Parameter(torch.ones(action_dim) * log_std_init, requires_grad=True)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Linear):
+            nn.init.orthogonal_(m.weight, gain=0.01)
+            if m.bias is not None:
+                m.bias.data.fill_(0.0)
 
     def forward(self, states: torch.tensor) -> Distribution:
         means = self.mean_net(states)
-        shared_cov_matrix = torch.diag_embed(self.log_std)
+        shared_cov_matrix = torch.diag_embed(torch.exp(self.log_std))
         return MultivariateNormal(means, shared_cov_matrix)
