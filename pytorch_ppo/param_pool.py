@@ -1,40 +1,53 @@
-from typing import Dict, Tuple
+from typing import Dict
 import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
 
-from utils import get_device, save_net, load_net
-from policies import MLPBetaPolicy, MLPGaussianPolicy
+import gin
+
+from utils import get_device, save_net, load_net, explained_variance
+from policies import MLPGaussianPolicy
 from value_function import MLPValueFunction
 
-from mpi_utils import mpi_avg_grads
 
+@gin.configurable(module=__name__)
+class PPOClip:
 
+    """
+    Class containing parameters and ways by which they interact with env / data.
 
-class PPO:
+    Very similar to SB3's PPO; some implementation details may be exactly the same.
+    Unlike SB3's PPO, we do not offer the option to do value function clipping (default is false in SB3 anyway).
 
-    """Class containing parameters and ways by which they interact with env / data."""
+    All default hyperparameter values are copied from SB3, and can be overrode by configs.
+    """
 
     def __init__(
-            self,
+        self,
 
-            state_dim: int,
-            action_dim: int,
+        # env specifications
+        state_dim: int,
+        action_dim: int,
 
-            num_epochs: int = 10,  # SB3
-            batch_size: int = 64,  # SB3
+        # training loop
+        num_epochs: int = 10,
+        batch_size: int = 64,
 
-            eps: float = 0.1,  # openai spinup
+        # clipping (alternative to trust region in TRPO)
+        eps: float = 0.2,
 
-            vf_loss_weight: float = 0.5,  # SB3
-            entropy_loss_weight: float = 0.0,  # SB3
-            max_grad_norm: float = 0.5,  # SB3
+        # loss
+        vf_loss_weight: float = 0.5,
+        entropy_loss_weight: float = 0.0,
 
-            lr: float = 3e-4,  # SB3
+        # gradient
+        max_grad_norm: float = 0.5,
+        lr: float = 3e-4,
 
-            target_kl: float = 1e-3  # openai spinup
+        # early stopping
+        target_kl: float = None
     ):
 
         # hyperparameters
@@ -177,24 +190,21 @@ class PPO:
 
         # compute stat values, and explained variance
 
-        # for i in range(self.num_iters_for_vf):
-        #     vf_loss = ((self.vf(data["obs"]) - data["ret"]) ** 2).mean()
-        #     if i == 0: init_vf_loss = float(vf_loss)
-        #     self.vf_optimizer.zero_grad()
-        #     vf_loss.backward()
-        #     mpi_avg_grads(self.vf)
-        #     self.vf_optimizer.step()
+        explained_var = explained_variance(y_pred=data["values"], y_true=data["rets"])
 
         return {
             "policy_loss": np.mean(policy_losses),
             "vf_loss": np.mean(vf_losses),
             "entropy_loss": np.mean(entropy_losses),
             "loss": np.mean(losses),
-            "approx_kls": np.mean(approx_kls)
+            "approx_kls": np.mean(approx_kls),
+            "explained_var": explained_var
         }
 
-    def save_policy(self, save_dir) -> None:
+    def save(self, save_dir) -> None:
+        save_net(self.vf, save_dir, "vf.pth")
         save_net(self.policy, save_dir, "policy.pth")
 
-    def load_policy(self, save_dir) -> None:
+    def load(self, save_dir) -> None:
+        load_net(self.vf, save_dir, "vf.pth")
         load_net(self.policy, save_dir, "policy.pth")

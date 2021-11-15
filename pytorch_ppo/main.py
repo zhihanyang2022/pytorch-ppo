@@ -3,8 +3,8 @@ from gym.wrappers import RescaleAction
 import numpy as np
 from episodic_buffer import EpisodicBuffer
 from param_pool import ParamPool
-from mpi_utils import setup_pytorch_for_mpi, sync_params, proc_id
-from mpi_tools import mpi_fork
+from trash.mpi_utils import setup_pytorch_for_mpi, sync_params, proc_id
+from trash.mpi_tools import mpi_fork
 
 
 num_cpus = 10
