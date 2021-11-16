@@ -12,7 +12,11 @@ class EpisodicBuffer:
 
     def __init__(self, obs_dim, act_dim, size, gamma=0.99, lam=0.95):
         self.obs_buf = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
-        self.act_buf = np.zeros(combined_shape(size, act_dim), dtype=np.float32)
+        if act_dim is not None:
+            self.act_buf = np.zeros(combined_shape(size, act_dim), dtype=np.float32)
+        else:
+            # (size, 1) leads to incorrect broadcasting
+            self.act_buf = np.zeros(combined_shape(size, ), dtype=np.int32)
         self.adv_buf = np.zeros(size, dtype=np.float32)
         self.rew_buf = np.zeros(size, dtype=np.float32)
         self.ret_buf = np.zeros(size, dtype=np.float32)
@@ -58,7 +62,7 @@ class EpisodicBuffer:
 
         # the next line computes rewards-to-go, to be targets for the value function
         # self.ret_buf[path_slice] = discount_cumsum(rews, self.gamma)[:-1]
-        self.ret_buf[path_slice] = self.adv_buf[path_slice] + self.val_buf[path_slice]
+        self.ret_buf[path_slice] = self.adv_buf[path_slice] + self.val_buf[path_slice]  # a lower variance alternative?
 
         self.path_start_idx = self.ptr
 

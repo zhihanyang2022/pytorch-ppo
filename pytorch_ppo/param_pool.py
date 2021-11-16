@@ -8,7 +8,7 @@ from torch.utils.data import TensorDataset, DataLoader
 import gin
 
 from utils import get_device, save_net, load_net, explained_variance
-from policies import MLPGaussianPolicy
+from policies import MLPGaussianPolicy, MLPCategorialPolicy
 from value_function import MLPValueFunction
 
 
@@ -27,6 +27,7 @@ class PPOClip:
         # env specifications
         state_dim: int,
         action_dim: int,
+        num_actions: int,
 
         # training loop
         num_epochs: int = 10,
@@ -47,6 +48,13 @@ class PPOClip:
         target_kl: float = None
     ):
 
+        assert ((action_dim is None) or (num_actions is None)) and (not (action_dim is None and num_actions is None))
+
+        if action_dim is not None:
+            self.action_type = "continuous"
+        else:
+            self.action_type = "discrete"
+
         # hyperparameters
 
         self.num_epochs = num_epochs
@@ -62,7 +70,10 @@ class PPOClip:
 
         # important objects
 
-        self.policy = MLPGaussianPolicy(state_dim=state_dim, action_dim=action_dim).to(get_device())
+        if self.action_type == "continuous":
+            self.policy = MLPGaussianPolicy(state_dim=state_dim, action_dim=action_dim).to(get_device())
+        else:
+            self.policy = MLPCategorialPolicy(state_dim=state_dim, num_actions=num_actions).to(get_device())
         self.policy_optimizer = optim.Adam(self.policy.parameters(), lr=lr)
         self.vf = MLPValueFunction(state_dim=state_dim).to(get_device())
         self.vf_optimizer = optim.Adam(self.vf.parameters(), lr=lr)
@@ -74,19 +85,27 @@ class PPOClip:
             state = torch.from_numpy(state).unsqueeze(0).float()  # (1, state_dim)
 
             dist = self.policy(state)
-            action = dist.sample()  # (1, action_dim)
+            action = dist.sample()  # (1, action_dim) for continuous; (1, ) for discrete
+
             logp = dist.log_prob(action)  # (1, )
             value = self.vf(state)  # (1, 1)
 
             # action: for now, we test on continuous control domains
             # logp: required for update_networks
             # value: required for bootstraping in computing returns
-            return np.array(action)[0], float(logp), float(value)
+            if self.action_type == 'continuous':
+                return np.array(action)[0], float(logp), float(value)
+            else:
+                return int(action), float(logp), float(value)
 
     def act_determ(self, state: np.array) -> np.array:
         with torch.no_grad():
             state = torch.from_numpy(state).unsqueeze(0).float()  # (1, state_dim)
-            return np.array(self.policy.forward_determ(state))[0]
+            action = self.policy.forward_determ(state)
+            if self.action_type == 'continuous':
+                return np.array(action)[0]
+            else:
+                return int(action)
 
     def update_networks(self, data: dict) -> Dict[str, float]:
 

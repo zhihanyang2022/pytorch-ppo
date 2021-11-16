@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.distributions import Distribution, Beta, Independent, MultivariateNormal
+from torch.distributions import Distribution, Beta, Independent, MultivariateNormal, Categorical
 
 
 class AddOne(nn.Module):
@@ -79,3 +79,26 @@ class MLPGaussianPolicy(nn.Module):
     def forward_determ(self, states: torch.tensor) -> torch.tensor:
         means = self.mean_net(states)
         return means
+
+
+class MLPCategorialPolicy(nn.Module):
+
+    def __init__(self, state_dim, num_actions):
+
+        super().__init__()
+
+        self.logit_net = nn.Sequential(
+            nn.Linear(state_dim, 64),
+            nn.Tanh(),
+            nn.Linear(64, 64),
+            nn.Tanh(),
+            nn.Linear(64, num_actions),
+        )  # outputs a vector of logits, one for each action
+
+    def forward(self, states: torch.tensor) -> Distribution:
+        logits = self.logit_net(states)
+        return Categorical(logits=logits)
+
+    def forward_determ(self, states: torch.tensor) -> torch.tensor:
+        logits = self.logit_net(states)
+        return torch.argmax(logits, dim=1)

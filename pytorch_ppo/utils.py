@@ -3,6 +3,112 @@ import numpy as np
 import scipy.signal
 import torch
 import torch.nn as nn
+import gym
+gym.logger.set_level(40)
+
+
+def gym_make_advanced(env_name):
+
+    env_raw = gym.make(env_name)
+
+    if isinstance(env_raw.action_space, gym.spaces.Box):
+
+        env = gym.wrappers.RescaleAction(env_raw, -1, 1)
+
+        action_type = "continuous"
+
+        state_dim = env.observation_space.shape[0]
+        action_dim = env.action_space.shape[0]
+        num_actions = None
+
+    elif isinstance(env_raw.action_space, gym.spaces.Discrete):
+
+        env = env_raw
+
+        action_type = "discrete"
+
+        state_dim = env.observation_space.shape[0]
+        action_dim = None
+        num_actions = env.action_space.n
+
+    else:
+
+        raise NotImplementedError
+
+    return env, state_dim, action_dim, num_actions, action_type
+
+
+def train_and_test(env, algo, buffer, num_alters, num_steps_per_alter, action_type):
+
+    for a in range(num_alters):
+
+        # data collection
+
+        state = env.reset()  # every epoch should start with a fresh episode
+
+        train_ret = 0
+        train_rets = []
+        episode_len = 0
+
+        for t in range(num_steps_per_alter):
+
+            action, log_prob, value = algo.act(state)
+
+            if action_type == "continuous":
+                next_state, reward, done, info = env.step(np.clip(action, -1, 1))
+            else:
+                next_state, reward, done, info = env.step(action)
+
+            train_ret += reward
+            episode_len += 1
+
+            buffer.store(state, action, reward, value, log_prob)
+
+            if done:
+
+                if episode_len == env.spec.max_episode_steps:
+                    cutoff = info.get('TimeLimit.truncated')
+                else:
+                    cutoff = False
+
+                if cutoff:
+                    last_val = float(algo.vf(torch.from_numpy(next_state).float()))
+                else:
+                    last_val = 0
+
+                buffer.finish_path(last_val=last_val)
+                state = env.reset()
+                train_rets.append(train_ret)
+                train_ret = 0
+                episode_len = 0
+
+            else:
+
+                state = next_state
+
+        # updating parameters
+
+        algo.update_networks(buffer.get())
+
+        # testing
+
+        test_rets = []
+        for _ in range(10):
+            test_ret = 0
+            state = env.reset()
+            while True:
+                action = algo.act_determ(state)
+                if action_type == "continuous":
+                    next_state, reward, done, info = env.step(np.clip(action, -1, 1))
+                else:
+                    next_state, reward, done, info = env.step(action)
+                test_ret += reward
+                if done:
+                    break
+                state = next_state
+            test_rets.append(test_ret)
+
+        print(a, np.mean(train_rets), np.mean(test_rets))
 
 
 def get_device():

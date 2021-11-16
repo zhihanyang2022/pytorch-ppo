@@ -1,60 +1,25 @@
-import gym
-from gym.wrappers import RescaleAction
-import numpy as np
-from episodic_buffer import EpisodicBuffer
+import argparse
+import gin
+
 from param_pool import PPOClip
-import torch
+from episodic_buffer import EpisodicBuffer
+from utils import gym_make_advanced, train_and_test
 
 
-env = RescaleAction(gym.make("Pendulum-v0"), -1, 1)
+parser = argparse.ArgumentParser()
+parser.add_argument("--env", type=str, required=True)
+args = parser.parse_args()
 
-param_pool = PPOClip(
-    state_dim=env.observation_space.shape[0],
-    action_dim=env.action_space.shape[0],
-    lr=1e-3
-)
+# gin.parse_config_file(f"configs/{args.env}.gin")
 
-buffer = EpisodicBuffer(
-    obs_dim=env.observation_space.shape[0],
-    act_dim=env.action_space.shape[0],
-    size=4096,
-    gamma=0.9
-)
+env, state_dim, action_dim, num_actions, action_type = gym_make_advanced(args.env)
 
-for e in range(25):
+print(f"Detected {action_type}-action environment ...")
 
-    state = env.reset()  # every epoch should start with a fresh episode
+ppo = PPOClip(state_dim=state_dim, action_dim=action_dim, num_actions=num_actions,
+              num_epochs=10, lr=1e-3)
+buffer = EpisodicBuffer(obs_dim=state_dim, act_dim=action_dim,
+                        size=4096, gamma=0.9, lam=0.95)
 
-    train_ret = 0
-    train_rets = []
-
-    for t in range(4096):
-
-        action, log_prob, value = param_pool.act(state)
-        next_state, reward, done, info = env.step(np.clip(action, -1, 1)); train_ret += reward
-        buffer.store(state, action, reward, value, log_prob)
-
-        if done:
-            buffer.finish_path(last_val=float(param_pool.vf(torch.from_numpy(next_state).float())))  # pendulum is timeout only
-            state = env.reset()
-            train_rets.append(train_ret)
-            train_ret = 0
-        else:
-            state = next_state
-
-    param_pool.update_networks(buffer.get())
-
-    test_rets = []
-    for _ in range(10):
-        test_ret = 0
-        state = env.reset()
-        while True:
-            action = param_pool.act_determ(state)
-            next_state, reward, done, info = env.step(np.clip(action, -1, 1))
-            test_ret += reward
-            if done:
-                break
-            state = next_state
-        test_rets.append(test_ret)
-
-    print(e, np.mean(train_rets), np.mean(test_rets))
+train_and_test(env=env, action_type=action_type, algo=ppo, buffer=buffer,
+               num_alters=25, num_steps_per_alter=4096)
