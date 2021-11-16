@@ -8,8 +8,7 @@ from torch.utils.data import TensorDataset, DataLoader
 import gin
 
 from utils import get_device, save_net, load_net, explained_variance
-from policies import MLPGaussianPolicy, MLPCategorialPolicy
-from value_function import MLPValueFunction
+from policies_and_vfs import MLPGaussianPolicy, MLPCategorialPolicy, MLPValueFunction
 
 
 @gin.configurable(module=__name__)
