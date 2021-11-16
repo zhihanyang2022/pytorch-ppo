@@ -1,0 +1,11 @@
+import param_pool
+import episodic_buffer
+import train_and_test
+
+param_pool.PPOClip.lr = 1e-3
+
+episodic_buffer.EpisodicBuffer.gamma = 0.9
+episodic_buffer.EpisodicBuffer.size = 4096
+
+train_and_test.train_and_test.num_alters = 25
+train_and_test.train_and_test.num_steps_per_alter = 4096

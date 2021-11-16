@@ -2,7 +2,10 @@ import numpy as np
 import torch
 from utils import combined_shape, discount_cumsum
 
+import gin
 
+
+@gin.configurable(module=__name__)
 class EpisodicBuffer:
     """
     A buffer for storing trajectories experienced by a PPO agent interacting

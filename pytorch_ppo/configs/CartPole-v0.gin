@@ -1,0 +1,15 @@
+import param_pool
+import episodic_buffer
+import train_and_test
+
+param_pool.PPOClip.lr = 5e-4  # as supposed to lin_0.001
+param_pool.PPOClip.num_epochs = 20
+param_pool.PPOClip.batch_size = 256
+param_pool.PPOClip.eps = 0.1  # as supposed to lin_0.2
+
+episodic_buffer.EpisodicBuffer.lam = 0.8
+episodic_buffer.EpisodicBuffer.gamma = 0.98
+episodic_buffer.EpisodicBuffer.size = 2048
+
+train_and_test.train_and_test.num_alters = 50
+train_and_test.train_and_test.num_steps_per_alter = 2048
