@@ -36,6 +36,7 @@ def train_and_test(
             train_ret += reward
             episode_len += 1
 
+            # WARNING: do not store clipped action
             buffer.store(state, action, reward, value, log_prob)
 
             if done:
