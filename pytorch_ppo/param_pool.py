@@ -7,7 +7,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 import gin
 
-from utils import get_device, save_net, load_net, explained_variance
+from utils import get_device, save_net, load_net, explained_variance, update_learning_rate
 from policies_and_vfs import MLPGaussianPolicy, MLPCategorialPolicy, MLPValueFunction
 
 
@@ -34,6 +34,7 @@ class PPOClip:
 
         # clipping (alternative to trust region in TRPO)
         eps: float = 0.2,
+        decay_eps: bool = False,  # linearly
 
         # loss
         vf_loss_weight: float = 0.5,
@@ -42,6 +43,7 @@ class PPOClip:
         # gradient
         max_grad_norm: float = 0.5,
         lr: float = 3e-4,
+        decay_lr: bool = False,  # linearly
 
         # early stopping
         target_kl: float = None
@@ -60,10 +62,14 @@ class PPOClip:
         self.batch_size = batch_size
 
         self.eps = eps
+        self.decay_eps = decay_eps
 
         self.vf_loss_weight = vf_loss_weight
         self.entropy_loss_weight = entropy_loss_weight
+
         self.max_grad_norm = max_grad_norm
+        self.lr = lr
+        self.decay_lr = decay_lr
 
         self.target_kl = target_kl
 
@@ -106,10 +112,23 @@ class PPOClip:
             else:
                 return int(action)
 
-    def update_networks(self, data: dict) -> Dict[str, float]:
+    def update_networks(self, data: dict, progress: float) -> Dict[str, float]:
 
         # This method is very similar to SB3's PPO's learn method; some implementation details may be exactly the same.
         # Unlike SB3's PPO, we do not offer the option to do value function clipping (default is false in SB3 anyway).
+
+        assert 0 <= progress <= 1
+
+        if self.decay_lr:
+            current_lr = self.lr * (1 - progress)
+            update_learning_rate(self.policy_optimizer, learning_rate=current_lr)
+        else:
+            current_lr = self.lr
+
+        if self.decay_eps:
+            current_eps = self.eps * (1 - progress)
+        else:
+            current_eps = self.eps
 
         # for logging
 
@@ -152,7 +171,7 @@ class PPOClip:
                 # compute policy loss
 
                 policy_objective_1 = advs * ratios
-                policy_objective_2 = advs * torch.clamp(ratios, 1 - self.eps, 1 + self.eps)
+                policy_objective_2 = advs * torch.clamp(ratios, 1 - current_eps, 1 + current_eps)
                 policy_objective = torch.min(policy_objective_1, policy_objective_2).mean()
                 policy_loss = - policy_objective
 
@@ -233,7 +252,9 @@ class PPOClip:
             "loss": np.mean(losses),
             "approx_kl": np.mean(approx_kls),
             "clip_fraction": np.mean(clip_fractions),
-            "explained_var": explained_var
+            "explained_var": explained_var,
+            "lr": current_lr,
+            "eps": current_eps,
         })
 
     def save(self, save_dir) -> None:

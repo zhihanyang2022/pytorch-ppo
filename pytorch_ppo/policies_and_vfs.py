@@ -6,8 +6,6 @@ from torch.distributions import Distribution, Beta, Independent, MultivariateNor
 
 import gin
 
-from utils import init_weights
-
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # we use these functions to set hyper-parameters that otherwise need to be set several times
@@ -40,6 +38,17 @@ def do_ortho_init(boolean=True):
 K_BACKBONE_GAIN = np.sqrt(2)
 K_ACTION_NET_GAIN = 0.01
 K_VALUE_NET_GAIN = 1
+
+
+def init_weights(module: nn.Module, gain: float) -> None:
+    """
+    Orthogonal initialization (used in PPO and A2C)
+    Copied from SB3
+    """
+    if isinstance(module, (nn.Linear, nn.Conv2d)):
+        nn.init.orthogonal_(module.weight, gain=gain)
+        if module.bias is not None:
+            module.bias.data.fill_(0.0)
 
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@

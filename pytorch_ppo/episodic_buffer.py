@@ -9,11 +9,11 @@ import gin
 class EpisodicBuffer:
     """
     A buffer for storing trajectories experienced by a PPO agent interacting
-    with the environment, and using Generalized Advantage Estimation (GAE-Lambda)
+    with the environment, and using Generalized Advantage Estimation (GAE-gae_lambda)
     for calculating the advantages of state-action pairs.
     """
 
-    def __init__(self, obs_dim, act_dim, size, gamma=0.99, lam=0.95):
+    def __init__(self, obs_dim, act_dim, size, gamma=0.99, gae_lam=0.95):
         self.obs_buf = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
         if act_dim is not None:
             self.act_buf = np.zeros(combined_shape(size, act_dim), dtype=np.float32)
@@ -25,7 +25,7 @@ class EpisodicBuffer:
         self.ret_buf = np.zeros(size, dtype=np.float32)
         self.val_buf = np.zeros(size, dtype=np.float32)
         self.logp_buf = np.zeros(size, dtype=np.float32)
-        self.gamma, self.lam = gamma, lam
+        self.gamma, self.gae_lam = gamma, gae_lam
         self.ptr, self.path_start_idx, self.max_size = 0, 0, size
 
     def store(self, obs, act, rew, val, logp):
@@ -45,7 +45,7 @@ class EpisodicBuffer:
         Call this at the end of a trajectory, or when one gets cut off
         by an epoch ending. This looks back in the buffer to where the
         trajectory started, and uses rewards and value estimates from
-        the whole trajectory to compute advantage estimates with GAE-Lambda,
+        the whole trajectory to compute advantage estimates with GAE-lambda,
         as well as compute the rewards-to-go for each state, to use as
         the targets for the value function.
         The "last_val" argument should be 0 if the trajectory ended
@@ -59,9 +59,9 @@ class EpisodicBuffer:
         rews = np.append(self.rew_buf[path_slice], last_val)  # r_1, r_2, ..., r_T, V(s_T)
         vals = np.append(self.val_buf[path_slice], last_val)  # V(s_0), V(s_1), ..., V(s_{T-1}), V(s_T)
 
-        # the next two lines implement GAE-Lambda advantage calculation
+        # the next two lines implement GAE-lambda advantage calculation
         deltas = rews[:-1] + self.gamma * vals[1:] - vals[:-1]
-        self.adv_buf[path_slice] = discount_cumsum(deltas, self.gamma * self.lam)
+        self.adv_buf[path_slice] = discount_cumsum(deltas, self.gamma * self.gae_lam)
 
         # the next line computes rewards-to-go, to be targets for the value function
         # self.ret_buf[path_slice] = discount_cumsum(rews, self.gamma)[:-1]

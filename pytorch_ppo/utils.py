@@ -7,17 +7,6 @@ import gym
 gym.logger.set_level(40)
 
 
-# from SB3
-def init_weights(module: nn.Module, gain: float) -> None:
-    """
-    Orthogonal initialization (used in PPO and A2C)
-    """
-    if isinstance(module, (nn.Linear, nn.Conv2d)):
-        nn.init.orthogonal_(module.weight, gain=gain)
-        if module.bias is not None:
-            module.bias.data.fill_(0.0)
-
-
 def gym_make_advanced(env_name):
 
     env_raw = gym.make(env_name)
@@ -101,3 +90,16 @@ def discount_cumsum(x, discount):
          x2]
     """
     return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]
+
+
+# copied from SB3
+def update_learning_rate(optimizer: torch.optim.Optimizer, learning_rate: float) -> None:
+    """
+    Update the learning rate for a given optimizer.
+    Useful when doing linear schedule.
+
+    :param optimizer:
+    :param learning_rate:
+    """
+    for param_group in optimizer.param_groups:
+        param_group["lr"] = learning_rate

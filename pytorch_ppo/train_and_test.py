@@ -64,7 +64,7 @@ def train_and_test(
 
         # updating parameters
 
-        algo.update_networks(buffer.get())
+        algo.update_networks(buffer.get(), progress=a/num_alters)
 
         # testing
 
@@ -85,3 +85,16 @@ def train_and_test(
             test_rets.append(test_ret)
 
         print(a, np.mean(train_rets), np.mean(test_rets))
+
+    # for _ in range(5):
+    #     state = env.reset()
+    #     while True:
+    #         action = algo.act_determ(state)
+    #         if action_type == "continuous":
+    #             next_state, reward, done, info = env.step(np.clip(action, -1, 1))
+    #         else:
+    #             next_state, reward, done, info = env.step(action)
+    #         env.render()
+    #         if done:
+    #             break
+    #         state = next_state
