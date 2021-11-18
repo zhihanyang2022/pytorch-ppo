@@ -103,3 +103,13 @@ def update_learning_rate(optimizer: torch.optim.Optimizer, learning_rate: float)
     """
     for param_group in optimizer.param_groups:
         param_group["lr"] = learning_rate
+
+
+def remove_dir_from_path(path: str) -> str:
+    return path.split('/')[-1]
+
+
+def remove_jsons_from_dir(directory):
+    for fname in os.listdir(directory):
+        if fname.endswith('.json'):
+            os.remove(os.path.join(directory, fname))

@@ -4,7 +4,7 @@
 import infras.policies_and_vfs
 import algorithms.ppo
 import infras.episodic_buffer
-import infras.train_and_test
+import infras.run_fns
 
 infras.policies_and_vfs.make_backbone.net_arch = [64, 64]
 infras.policies_and_vfs.make_backbone.activation_str = "tanh"
@@ -22,5 +22,5 @@ infras.episodic_buffer.EpisodicBuffer.gae_lam = 0.95
 infras.episodic_buffer.EpisodicBuffer.gamma = 0.9
 infras.episodic_buffer.EpisodicBuffer.size = 4000
 
-infras.train_and_test.train_and_test.num_alters = 25  # 100k / 4000
-infras.train_and_test.train_and_test.num_steps_per_alter = 4000
+infras.run_fns.train_and_test.num_alters = 25  # 100k / 4000
+infras.run_fns.train_and_test.num_steps_per_alter = 4000
