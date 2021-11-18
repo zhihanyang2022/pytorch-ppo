@@ -1,4 +1,4 @@
-# PPO to RPPO
+# PPO and its recurrent version
 
 ## First step: running benchmarked PPO code
 
