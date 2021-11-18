@@ -1,14 +1,14 @@
 # important template for discrete control tasks
 # show all configurables
 
-import infra.policies_and_vfs
+import infras.policies_and_vfs
 import algorithms.ppo
-import infra.episodic_buffer
-import infra.train_and_test
+import infras.episodic_buffer
+import infras.train_and_test
 
-infra.policies_and_vfs.make_backbone.net_arch = [64, 64]
-infra.policies_and_vfs.make_backbone.activation_str = "tanh"
-infra.policies_and_vfs.do_ortho_init.boolean = True
+infras.policies_and_vfs.make_backbone.net_arch = [64, 64]
+infras.policies_and_vfs.make_backbone.activation_str = "tanh"
+infras.policies_and_vfs.do_ortho_init.boolean = True
 
 algorithms.ppo.PPO.num_epochs = 20
 algorithms.ppo.PPO.batch_size = 256
@@ -17,9 +17,9 @@ algorithms.ppo.PPO.decay_eps = True
 algorithms.ppo.PPO.lr = 1e-3
 algorithms.ppo.PPO.decay_lr = True
 
-infra.episodic_buffer.EpisodicBuffer.gae_lam = 0.8
-infra.episodic_buffer.EpisodicBuffer.gamma = 0.98
-infra.episodic_buffer.EpisodicBuffer.size = 2000
+infras.episodic_buffer.EpisodicBuffer.gae_lam = 0.8
+infras.episodic_buffer.EpisodicBuffer.gamma = 0.98
+infras.episodic_buffer.EpisodicBuffer.size = 2000
 
-infra.train_and_test.train_and_test.num_alters = 50  # 100k / 2000
-infra.train_and_test.train_and_test.num_steps_per_alter = 2000
+infras.train_and_test.train_and_test.num_alters = 50  # 100k / 2000
+infras.train_and_test.train_and_test.num_steps_per_alter = 2000

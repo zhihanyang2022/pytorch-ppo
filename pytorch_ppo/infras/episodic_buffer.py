@@ -1,5 +1,5 @@
 import numpy as np
-from infra.utils import combined_shape, discount_cumsum
+from infras.utils import combined_shape, discount_cumsum
 
 import gin
 
