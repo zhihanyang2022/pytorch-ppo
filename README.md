@@ -45,3 +45,5 @@ A short word on installing free mujoco and mujoco py
 We try to reproduce 2 mujoco env performances
 
 Then move on to recurrent
+
+do not have folders of configs with same names
