@@ -1,4 +1,4 @@
-# PPO and its recurrent version
+# PPO-Clip and its recurrent version
 
 ## First step: running benchmarked PPO code
 
