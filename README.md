@@ -24,3 +24,16 @@ Potential to help a little bit with plotting functionality
 
 Features that it have and not have, vs stable-baseliens current implementation
 
+-   Policy and value networks
+    -   Same: same architecture, same activation function, we do not share part of policy and value networks, we do weight initializatio
+    -   We do not use feature_extractor class, mlp extractor
+
+-   Hyperparameters
+    -   Our config files encode the exact hyperparameters tuned by `rl-baselines3-zoo`
+
+Questions:
+
+-   Do SB3’s data collection start from new episode each time?
+-   How does the tuning process work? How are the hyperparameter ranges chosen?
+
+Sharing is not used by default in PPO?

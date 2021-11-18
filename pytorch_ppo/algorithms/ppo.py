@@ -7,12 +7,12 @@ from torch.utils.data import TensorDataset, DataLoader
 
 import gin
 
-from utils import get_device, save_net, load_net, explained_variance, update_learning_rate
-from policies_and_vfs import MLPGaussianPolicy, MLPCategorialPolicy, MLPValueFunction
+from common.utils import get_device, save_net, load_net, explained_variance, update_learning_rate
+from common.policies_and_vfs import MLPGaussianPolicy, MLPCategorialPolicy, MLPValueFunction
 
 
 @gin.configurable(module=__name__)
-class PPOClip:
+class PPO:
 
     """
     Class containing neural networks and methods by which they interact with env / data.
@@ -245,7 +245,7 @@ class PPOClip:
 
         explained_var = explained_variance(y_pred=data["values"], y_true=data["rets"])
 
-        print({
+        stats = {
             "policy_loss": np.mean(policy_losses),
             "vf_loss": np.mean(vf_losses),
             "entropy_loss": np.mean(entropy_losses),
@@ -255,7 +255,9 @@ class PPOClip:
             "explained_var": explained_var,
             "lr": current_lr,
             "eps": current_eps,
-        })
+        }
+
+        return stats
 
     def save(self, save_dir) -> None:
         save_net(self.vf, save_dir, "vf.pth")

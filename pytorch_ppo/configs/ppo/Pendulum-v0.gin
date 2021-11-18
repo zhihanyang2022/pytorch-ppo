@@ -1,26 +1,26 @@
 # important template for continuous control tasks
 # show all configurables
 
-import policies_and_vfs
-import param_pool
-import episodic_buffer
-import train_and_test
+import common.policies_and_vfs
+import algorithms.ppo
+import common.episodic_buffer
+import common.train_and_test
 
-policies_and_vfs.make_backbone.net_arch = [64, 64]
-policies_and_vfs.make_backbone.activation_str = "tanh"
-policies_and_vfs.do_ortho_init.boolean = True
-policies_and_vfs.MLPGaussianPolicy.log_std_init = 0.0  # std_init => 1
+common.policies_and_vfs.make_backbone.net_arch = [64, 64]
+common.policies_and_vfs.make_backbone.activation_str = "tanh"
+common.policies_and_vfs.do_ortho_init.boolean = True
+common.policies_and_vfs.MLPGaussianPolicy.log_std_init = 0.0  # std_init => 1
 
-param_pool.PPOClip.num_epochs = 10
-param_pool.PPOClip.batch_size = 64
-param_pool.PPOClip.eps = 0.2
-param_pool.PPOClip.decay_eps = False
-param_pool.PPOClip.lr = 1e-3
-param_pool.PPOClip.decay_lr = False
+algorithms.ppo.PPO.num_epochs = 10
+algorithms.ppo.PPO.batch_size = 64
+algorithms.ppo.PPO.eps = 0.2
+algorithms.ppo.PPO.decay_eps = False
+algorithms.ppo.PPO.lr = 1e-3
+algorithms.ppo.PPO.decay_lr = False
 
-episodic_buffer.EpisodicBuffer.gae_lam = 0.95
-episodic_buffer.EpisodicBuffer.gamma = 0.9
-episodic_buffer.EpisodicBuffer.size = 4000
+common.episodic_buffer.EpisodicBuffer.gae_lam = 0.95
+common.episodic_buffer.EpisodicBuffer.gamma = 0.9
+common.episodic_buffer.EpisodicBuffer.size = 4000
 
-train_and_test.train_and_test.num_alters = 25  # 100k / 4000
-train_and_test.train_and_test.num_steps_per_alter = 4000
+common.train_and_test.train_and_test.num_alters = 25  # 100k / 4000
+common.train_and_test.train_and_test.num_steps_per_alter = 4000

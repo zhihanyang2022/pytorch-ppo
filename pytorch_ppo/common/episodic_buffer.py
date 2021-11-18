@@ -1,6 +1,5 @@
 import numpy as np
-import torch
-from utils import combined_shape, discount_cumsum
+from common.utils import combined_shape, discount_cumsum
 
 import gin
 
