@@ -37,3 +37,11 @@ Questions:
 -   How does the tuning process work? How are the hyperparameter ranges chosen?
 
 Sharing is not used by default in PPO?
+
+Why is n step usually smaller than the maximum episode length?
+
+A short word on installing free mujoco and mujoco py
+
+We try to reproduce 2 mujoco env performances
+
+Then move on to recurrent
