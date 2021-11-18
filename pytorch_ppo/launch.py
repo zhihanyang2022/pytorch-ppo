@@ -4,9 +4,9 @@ import gin
 import wandb
 
 from algorithms.ppo import PPO
-from common.episodic_buffer import EpisodicBuffer
-from common.utils import gym_make_advanced
-from common.train_and_test import train_and_test
+from infra.episodic_buffer import EpisodicBuffer
+from infra.utils import gym_make_advanced
+from infra.train_and_test import train_and_test
 
 
 algo_name2class = {
