@@ -9,11 +9,15 @@ gym.logger.set_level(40)
 
 def gym_make_advanced(env_name):
 
-    env_raw = gym.make(env_name)
+    def env_raw_fn():
+        return gym.make(env_name)
 
-    if isinstance(env_raw.action_space, gym.spaces.Box):
+    if isinstance(env_raw_fn().action_space, gym.spaces.Box):
 
-        env = gym.wrappers.RescaleAction(env_raw, -1, 1)
+        def env_fn():
+            return gym.wrappers.RescaleAction(env_raw_fn(), -1, 1)
+
+        env = env_fn()
 
         action_type = "continuous"
 
@@ -21,9 +25,12 @@ def gym_make_advanced(env_name):
         action_dim = env.action_space.shape[0]
         num_actions = None
 
-    elif isinstance(env_raw.action_space, gym.spaces.Discrete):
+    elif isinstance(env_raw_fn().action_space, gym.spaces.Discrete):
 
-        env = env_raw
+        def env_fn():
+            return env_raw_fn()
+
+        env = env_fn()
 
         action_type = "discrete"
 
@@ -35,7 +42,7 @@ def gym_make_advanced(env_name):
 
         raise NotImplementedError
 
-    return env, state_dim, action_dim, num_actions, action_type
+    return env_fn, state_dim, action_dim, num_actions, action_type
 
 
 def get_device():

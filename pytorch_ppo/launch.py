@@ -27,12 +27,12 @@ for run_id in args.run_id:
 
     if args.enjoy:
 
-        env, state_dim, action_dim, num_actions, action_type = gym_make_advanced(args.env)
+        env_fn, state_dim, action_dim, num_actions, action_type = gym_make_advanced(args.env)
 
         algo = algo_name2class[args.algo](state_dim=state_dim, action_dim=action_dim, num_actions=num_actions)
 
         load_and_visualize_policy(
-            env=env,
+            env=env_fn(),
             action_type=action_type,
             algo=algo,
             policy_dir=f"pytorch-ppo-pretrained/{args.algo}_{args.env}_{remove_dir_from_path(args.config).split('.')[0]}/{run_id}",
@@ -51,7 +51,7 @@ for run_id in args.run_id:
             reinit=True
         )
 
-        env, state_dim, action_dim, num_actions, action_type = gym_make_advanced(args.env)
+        env_fn, state_dim, action_dim, num_actions, action_type = gym_make_advanced(args.env)
 
         print(f"Env name: {args.env}")
         print(f"Detected action type: {action_type}")
@@ -60,6 +60,6 @@ for run_id in args.run_id:
         algo = algo_name2class[args.algo](state_dim=state_dim, action_dim=action_dim, num_actions=num_actions)
         buffer = EpisodicBuffer(obs_dim=state_dim, act_dim=action_dim)
 
-        train_and_test(env=env, action_type=action_type, algo=algo, buffer=buffer)
+        train_and_test(env_fn=env_fn, action_type=action_type, algo=algo, buffer=buffer)
 
         run.finish()

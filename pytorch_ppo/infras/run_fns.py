@@ -1,13 +1,12 @@
 import numpy as np
 import torch
+from collections import deque
 from gym.wrappers import Monitor
 
 import gin
 import wandb
 import time
 import json
-
-from infras.utils import remove_jsons_from_dir
 
 
 def test_for_one_episode(env, action_type, algo, render):
@@ -58,7 +57,7 @@ def load_and_visualize_policy(env, action_type, algo, policy_dir, num_episodes, 
 
 @gin.configurable(module=__name__)
 def train_and_test(
-    env,
+    env_fn,  # we pass env_fn instead of env here so that a separate env can be instantiated for testing
     algo,
     buffer,
     num_alters=gin.REQUIRED,
@@ -69,16 +68,22 @@ def train_and_test(
 
     start = time.perf_counter()
 
+    # do no ever reset this env, unless when an episode is done
+    # do not ever pass this env to testing directly
+    env = env_fn()
+    test_env = env_fn()
+
+    train_rets_deque = deque(maxlen=20)
+    train_eplens_deque = deque(maxlen=20)
+
+    state = env.reset()
+
+    train_ret = 0
+    train_eplen = 0
+
     for a in range(num_alters):
 
         # data collection
-
-        state = env.reset()  # every epoch should start with a fresh episode
-
-        train_ret = 0
-        train_rets = []
-        train_eplen = 0
-        train_eplens = []
 
         for t in range(num_steps_per_alter):
 
@@ -94,9 +99,15 @@ def train_and_test(
 
             # WARNING: do not store clipped action because log_prob is computed
             # using the unclipped action; if clipped action is stored, learning suffers
+
             buffer.store(state, action, reward, value, log_prob)
 
-            if done:
+            # compute advantages and do bootstrapping
+
+            # the second condition is crucial when the final episode is cut off
+            # otherwise advantages would remain zeros in buffer
+
+            if done or (t == num_steps_per_alter - 1):
 
                 if train_eplen == env.spec.max_episode_steps:
                     cutoff = info.get('TimeLimit.truncated')
@@ -109,17 +120,28 @@ def train_and_test(
                     last_val = 0
 
                 buffer.finish_path(last_val=last_val)
-                state = env.reset()
 
-                train_rets.append(train_ret)
-                train_eplens.append(train_eplen)
+            # end of episode handling
+
+            if done:
+
+                train_rets_deque.append(train_ret)
+                train_eplens_deque.append(train_eplen)
 
                 train_ret = 0
                 train_eplen = 0
 
+                state = env.reset()
+
             else:
 
                 state = next_state
+
+        # due to numerical imprecision, no advantage should be exactly zero
+        # this would throw an error when the 2nd condition is removed from "if done or (t == num_steps_per_alter - 1):"
+        # for CartPole-v0, for example
+
+        assert not np.any(buffer.adv_buf == 0), "Part of the advantage buffer is not filled."
 
         # updating parameters
 
@@ -130,7 +152,7 @@ def train_and_test(
         test_rets = []
         test_eplens = []
         for _ in range(num_test_episodes):
-            test_ret, test_eplen = test_for_one_episode(env, action_type, algo, render=False)
+            test_ret, test_eplen = test_for_one_episode(test_env, action_type, algo, render=False)
             test_rets.append(test_ret)
             test_eplens.append(test_eplen)
 
@@ -139,8 +161,8 @@ def train_and_test(
         dict_for_wandb = {}
 
         dict_for_wandb.update({
-            'Episode Return (Train)': np.mean(train_rets),
-            'Episode Length (Train)': np.mean(train_eplens),
+            'Episode Return (Train)': np.nan if len(train_rets_deque) == 0 else np.mean(train_rets_deque),
+            'Episode Length (Train)': np.nan if len(train_eplens_deque) == 0 else np.mean(train_eplens_deque),
             'Episode Return (Test)': np.mean(test_rets),
             'Episode Length (Test)': np.mean(test_eplens),
             'Hours': (time.perf_counter() - start) / 3600
@@ -164,16 +186,3 @@ def train_and_test(
         print(json.dumps(dict_for_printing, sort_keys=False, indent=4))
 
     algo.save(wandb.run.dir)  # need to manually download model later, but more organized
-
-    # for _ in range(5):
-    #     state = env.reset()
-    #     while True:
-    #         action = algo.act_determ(state)
-    #         if action_type == "continuous":
-    #             next_state, reward, done, info = env.step(np.clip(action, -1, 1))
-    #         else:
-    #             next_state, reward, done, info = env.step(action)
-    #         env.render()
-    #         if done:
-    #             break
-    #         state = next_state
