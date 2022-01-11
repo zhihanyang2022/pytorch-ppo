@@ -1,10 +1,14 @@
 # important template for continuous control tasks
 # show all configurables
 
+import launch_utils
 import infras.policies_and_vfs
 import algorithms.ppo
 import infras.episodic_buffer
 import infras.run_fns
+
+launch_utils.pick.env = "Pendulum-v0"
+launch_utils.pick.algo = "PPO"
 
 infras.policies_and_vfs.make_backbone.net_arch = [64, 64]
 infras.policies_and_vfs.make_backbone.activation_str = "tanh"

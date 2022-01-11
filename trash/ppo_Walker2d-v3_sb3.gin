@@ -1,0 +1,26 @@
+import infras.policies_and_vfs
+import algorithms.ppo
+import infras.episodic_buffer
+import infras.run_fns
+
+infras.policies_and_vfs.make_backbone.net_arch = [64, 64]
+infras.policies_and_vfs.make_backbone.activation_str = "tanh"
+infras.policies_and_vfs.do_ortho_init.boolean = True
+infras.policies_and_vfs.MLPGaussianPolicy.log_std_init = 0
+
+algorithms.ppo.PPO.num_epochs = 20
+algorithms.ppo.PPO.batch_size = 32
+algorithms.ppo.PPO.eps = 0.1
+algorithms.ppo.PPO.decay_eps = False
+algorithms.ppo.PPO.vf_loss_weight = 0.871923
+algorithms.ppo.PPO.entropy_loss_weight = 0.000585045
+algorithms.ppo.PPO.max_grad_norm = 1
+algorithms.ppo.PPO.lr = 5.05041e-05
+algorithms.ppo.PPO.decay_lr = False
+
+infras.episodic_buffer.EpisodicBuffer.gae_lam = 0.95
+infras.episodic_buffer.EpisodicBuffer.gamma = 0.99
+infras.episodic_buffer.EpisodicBuffer.size = 512
+
+infras.run_fns.train_and_test.num_alters = 1954  # 1e6 / 512
+infras.run_fns.train_and_test.num_steps_per_alter = 512
