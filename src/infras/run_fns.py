@@ -105,7 +105,8 @@ def train_and_test(
             # compute advantages and do bootstrapping
 
             # the second condition is crucial when the final episode is cut off
-            # otherwise advantages would remain zeros in buffer
+            # otherwise its advantages would remain zeros in buffer
+            # (later on, there's an assertion test that tests for this)
 
             if done or (t == num_steps_per_alter - 1):
 
