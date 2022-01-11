@@ -45,11 +45,11 @@ You can view plots on wandb. Here's an example screenshot:
 
 ## FAQs
 
-*Why parallelism doesn't bring you as much speedup as you think?*
+*Why doesn't parallel data collection bring you as much speedup as you think?*
 
-Sure, parallelism brings some speedup, but PPO is fast primarily because it's taking far fewer gradient steps than, e.g., DDPG, given the same number of environment timesteps. See https://github.com/DLR-RM/stable-baselines3/issues/643 for a thorough discussion.
+Sure, parallel data collection brings some speedup, but PPO is fast primarily because it's taking far fewer gradient steps than, e.g., DDPG, given the same number of environment timesteps. See https://github.com/DLR-RM/stable-baselines3/issues/643 for a thorough discussion.
 
-*How is this implementation different from SB3's?*
+*How is this implementation different from SB3's PPO?*
 
 They are supposed to be exactly the same, except that this repo doesn't have certain arguments, which are default to None or False in SB3 anyways. The hyper-parameters in config files were copied from rl-baselines3-zoo. These hyper-parameter values are good because they are tuned.
 
