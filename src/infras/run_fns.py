@@ -73,6 +73,7 @@ def train_and_test(
     env = env_fn()
     test_env = env_fn()
 
+    # used for maintaining running means, similar to stable-baselines3
     train_rets_deque = deque(maxlen=20)
     train_eplens_deque = deque(maxlen=20)
 
@@ -97,13 +98,15 @@ def train_and_test(
             train_ret += reward
             train_eplen += 1
 
-            # WARNING: do not store clipped action because log_prob is computed
-            # using the unclipped action; if clipped action is stored, learning suffers
+            # HARD-TO-FIND BUG
+            # do not store clipped action because log_prob is computed using the unclipped action;
+            # if clipped action is stored, learning suffers
 
             buffer.store(state, action, reward, value, log_prob)
 
             # compute advantages and do bootstrapping
 
+            # HARD-TO-FIND BUG
             # the second condition is crucial when the final episode is cut off
             # otherwise its advantages would remain zeros in buffer
             # (later on, there's an assertion test that tests for this)
