@@ -40,3 +40,5 @@ You can view plots on wandb. Here's an example screenshot:
 *Why parallelism doesn't bring you as much speedup as you think?*
 
 *How is this implementation different from SB3's?*
+
+*How to extend this codebase for research purposes?*
