@@ -43,7 +43,7 @@ Sure, parallelism brings some speedup, but PPO is fast primarily because it's ta
 
 *How is this implementation different from SB3's?*
 
-They are supposed to be exactly the same, except that this repo doesn't have certain arguments, which are default to None or False in SB3 anyways. The hyper-parameters in config files were copied from rl-baselines3-zoo.  
+They are supposed to be exactly the same, except that this repo doesn't have certain arguments, which are default to None or False in SB3 anyways. The hyper-parameters in config files were copied from rl-baselines3-zoo. These hyper-parameter values are good because they are tuned.
 
 *How to extend this codebase for research purposes?*
 
