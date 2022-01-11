@@ -1,7 +1,9 @@
 # PPO-Clip
 
-In this repo, I minimally but very carefully implemented PPO-Clip in PyTorch, without parallelism. It converges very stably within a
-minute on CartPole-v0 and Pendulum-v0. 
+In this repo, I minimally but very carefully implemented PPO-Clip in PyTorch, without parallelism. It has been very time consuming
+since there are so many details to get wrong, even if I had stable-baselines3 as a reference.
+
+Now, it's working very well and converges very stably within a minute on CartPole-v0 and Pendulum-v0. 
 
 ## Requirements
 
