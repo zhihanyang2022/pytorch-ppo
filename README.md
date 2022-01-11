@@ -5,6 +5,12 @@ since there are many details to get right, even though I had stable-baselines3 a
 
 Now, it's working very well and converges very stably within a minute on CartPole-v0 and Pendulum-v0. 
 
+
+
+CartPole             |  Pendulum
+:-------------------------:|:-------------------------:
+![image](https://user-images.githubusercontent.com/43589364/148905461-8566e06f-f4f3-4416-b4d5-4e10f98fbaf4.png)  |  ![image](https://user-images.githubusercontent.com/43589364/148905251-00b5ac3f-293c-4962-bb3c-4da06ccf03a6.png)
+
 ## Requirements
 
 ```bash
