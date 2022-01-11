@@ -39,6 +39,12 @@ You can view plots on wandb. Here's an example screenshot:
 
 *Why parallelism doesn't bring you as much speedup as you think?*
 
+TODO
+
 *How is this implementation different from SB3's?*
 
+They are supposed to be exactly the same, except that this repo doesn't have certain arguments, which are default to None or False in SB3 anyways. The hyper-parameters in config files were copied from rl-baselines3-zoo.  
+
 *How to extend this codebase for research purposes?*
+
+You can create a new file in `algorithms`, add it to the `algo_name2class` dictionary inside `launch.py`. Then, you can simply specify that you want to run that algorithm in config files, which means you need to create a folder in `experiments` to contain that config file. 
