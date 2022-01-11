@@ -17,16 +17,18 @@ Setup wandb.
 
 Train:
 
-```python
+```bash
 python launch.py --expdir experiments/CartPole-v0_ppo_sb3 --run_id 1
 ```
 
 Visualize policy (require you to download the trained models from wandb):
 
-```python
+```bash
 python launch.py --expdir experiments/CartPole-v0_ppo_sb3 --run_id 1 --enjoy
 ```
 
 ## Plots
 
 You can view plots on wandb. Here's an example screenshot:
+
+![image](https://user-images.githubusercontent.com/43589364/148901571-e91203df-6ce4-41d4-a876-d3f3de288c22.png)
