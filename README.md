@@ -45,6 +45,10 @@ Sure, parallelism brings some speedup, but PPO is fast primarily because it's ta
 
 They are supposed to be exactly the same, except that this repo doesn't have certain arguments, which are default to None or False in SB3 anyways. The hyper-parameters in config files were copied from rl-baselines3-zoo. These hyper-parameter values are good because they are tuned.
 
+*What hyper-parameter values are you using?*
+
+Checkout the config files in the two subdirs of `experiments`, one for the simplest discrete control domain and the other for the simplest continuous control domain. 
+
 *How to extend this codebase for research purposes?*
 
 You can create a new file in `algorithms`, add it to the `algo_name2class` dictionary inside `launch.py`. Then, you can simply specify that you want to run that algorithm in config files, which means you need to create a folder in `experiments` to contain that config file. 
