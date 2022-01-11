@@ -1,3 +1,0 @@
-[submodule "pytorch_ppo/pytorch-ppo-pretrained"]
-	path = pytorch_ppo/pytorch-ppo-pretrained
-	url = https://github.com/zhihanyang2022/pytorch-ppo-pretrained
