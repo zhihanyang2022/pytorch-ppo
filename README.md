@@ -60,3 +60,7 @@ Checkout the config files in the two subdirs of `experiments`, one for the simpl
 *How to extend this codebase for research purposes?*
 
 You can create a new file in `algorithms`, add it to the `algo_name2class` dictionary inside `launch.py`. Then, you can simply specify that you want to run that algorithm in config files, which means you need to create a folder in `experiments` to contain that config file. 
+
+## Thanks
+
+I'd like to thank the maintainers of SB3 for answering my questions during this process.
