@@ -6,10 +6,11 @@ In this repo, I minimally but very carefully implemented PPO-Clip in PyTorch, wi
 
 Now, it's working very well and converges very stably within a minute on CartPole-v0 and Pendulum-v0. 
 
-CartPole             |  Pendulum
+CartPole-v0             |  Pendulum-v0 | HalfCheetah-v3
 :-------------------------:|:-------------------------:
-![ezgif com-gif-maker](https://user-images.githubusercontent.com/43589364/148905684-8e313857-868d-489f-aba0-1abbce30c3de.gif) | ![ezgif com-gif-maker (1)](https://user-images.githubusercontent.com/43589364/148905756-1450b124-c499-4eb3-aadc-db0a4049a44d.gif)
-![image](https://user-images.githubusercontent.com/43589364/148906014-8d69927f-3c0b-4a09-9dc8-537d0b8be754.png) | ![image](https://user-images.githubusercontent.com/43589364/148906065-11107c86-16c3-46c4-9eff-601d18d442c6.png)
+![ezgif com-gif-maker](https://user-images.githubusercontent.com/43589364/148905684-8e313857-868d-489f-aba0-1abbce30c3de.gif) | ![ezgif com-gif-maker (1)](https://user-images.githubusercontent.com/43589364/148905756-1450b124-c499-4eb3-aadc-db0a4049a44d.gif) | TODO
+![image](https://user-images.githubusercontent.com/43589364/148906014-8d69927f-3c0b-4a09-9dc8-537d0b8be754.png) | ![image](https://user-images.githubusercontent.com/43589364/148906065-11107c86-16c3-46c4-9eff-601d18d442c6.png) | ![image](https://user-images.githubusercontent.com/43589364/149087421-0018acda-e870-4c2d-9db2-52eafe6df7e2.png)
+
 
 
 
