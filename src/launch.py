@@ -45,8 +45,8 @@ for run_id in args.run_id:
     else:
 
         run = wandb.init(
-            project=os.getenv('OFFPCC_WANDB_PROJECT'),
-            entity=os.getenv('OFFPCC_WANDB_ENTITY'),
+            project="pytorch_ppo",  # os.getenv('OFFPCC_WANDB_PROJECT'),
+            entity="yangz2",  # os.getenv('OFFPCC_WANDB_ENTITY'),
             group=args.expdir,
             settings=wandb.Settings(_disable_stats=True),
             name=f'run_id={run_id}',
