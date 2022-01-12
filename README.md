@@ -1,6 +1,6 @@
 I'm considering running more seeds and reproducing SB3's PPO's performance on some hard domains, so stay tuned!
 
-# PPO-Clip
+# PPO-Clip 🤗
 
 In this repo, I minimally but very carefully implemented PPO-Clip in PyTorch, without parallelism. It has been very time-consuming since there are many details to get right, even though I had stable-baselines3 as a reference.
 
