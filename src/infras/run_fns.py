@@ -46,7 +46,8 @@ def load_and_visualize_policy(env, action_type, algo, policy_dir, num_episodes, 
 
     ep_lens, ep_rets = [], []
     for i in range(num_episodes):
-        ep_len, ep_ret = test_for_one_episode(env, action_type, algo, render=True)
+        # no need to set render to True when already wrapped in Monitor
+        ep_len, ep_ret = test_for_one_episode(env, action_type, algo, render=False)
         ep_lens.append(ep_len)
         ep_rets.append(ep_ret)
 

@@ -38,7 +38,7 @@ for run_id in args.run_id:
             action_type=action_type,
             algo=algo,
             policy_dir=f"{args.expdir}/{run_id}",
-            num_episodes=5,
+            num_episodes=1,
             save_videos=True  # do no render on screen, but you can watch later for many times
         )
 
