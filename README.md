@@ -4,7 +4,7 @@ I'm considering running more seeds and reproducing SB3's PPO's performance on so
 
 In this repo, I minimally but very carefully implemented PPO-Clip in PyTorch, without parallelism. It has been very time-consuming since there are many details to get right, even though I had stable-baselines3 as a reference.
 
-Now, it's working very well and converges very stably within a minute on CartPole-v0 and Pendulum-v0. It also works just fine for a harder environment like HalfCheetah-v3. 
+Now, it's working very well and converges very stably within 2-3 minutes on CartPole-v0 and Pendulum-v0 (100k steps). It reaches good performance on HalfCheetah-v3 (1M steps) using 2 hours.
 
 CartPole-v0             |  Pendulum-v0 | HalfCheetah-v3
 :-------------------------:|:-------------------------:|:-------------------------:|
